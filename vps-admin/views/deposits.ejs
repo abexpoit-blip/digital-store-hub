@@ -1,0 +1,53 @@
+<%- include('partials/header', { title: 'Deposits', msg: null, currentPath }) %>
+
+<h1 class="text-2xl font-bold mb-4">💰 Deposits</h1>
+
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+  <% summary.forEach(function(s){ %>
+    <div class="bg-slate-900 border border-slate-800 p-3 rounded-lg">
+      <div class="text-xs uppercase text-slate-400"><%= s.status %></div>
+      <div class="text-lg font-bold mt-1"><%= s.s.toLocaleString() %>৳</div>
+      <div class="text-xs text-slate-500"><%= s.c %> txn</div>
+    </div>
+  <% }) %>
+</div>
+
+<form class="mb-4 flex gap-2 flex-wrap">
+  <select name="status" class="bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm">
+    <option value="all" <%= status==='all'?'selected':'' %>>All status</option>
+    <option value="pending" <%= status==='pending'?'selected':'' %>>Pending</option>
+    <option value="approved" <%= status==='approved'?'selected':'' %>>Approved</option>
+    <option value="rejected" <%= status==='rejected'?'selected':'' %>>Rejected</option>
+  </select>
+  <input name="q" value="<%= q %>" placeholder="user id / username"
+    class="flex-1 max-w-sm bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm"/>
+  <button class="bg-cyan-600 hover:bg-cyan-500 px-4 rounded text-sm">Filter</button>
+</form>
+
+<div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+  <table class="w-full text-sm">
+    <thead><tr><th>Req ID</th><th>User</th><th>Amount</th><th>Status</th><th>Admin</th><th>Date</th></tr></thead>
+    <tbody>
+      <% if (!deposits.length) { %><tr><td colspan="6" class="text-center text-slate-500 py-6">No deposits found.</td></tr><% } %>
+      <% deposits.forEach(function(d){ %>
+        <tr>
+          <td class="font-mono text-xs text-slate-500"><%= (d.req_id||'').slice(0,12) %></td>
+          <td><a href="/users/<%= d.user_id %>" class="text-cyan-400 hover:underline"><%= d.username || d.user_id %></a></td>
+          <td class="font-bold"><%= d.amount %>৳</td>
+          <td>
+            <span class="px-2 py-0.5 rounded text-xs
+              <%= d.status==='approved'?'bg-emerald-700/40 text-emerald-300':d.status==='pending'?'bg-amber-700/40 text-amber-300':'bg-rose-700/40 text-rose-300' %>">
+              <%= d.status %>
+            </span>
+          </td>
+          <td class="text-slate-400 text-xs"><%= d.admin_name || '-' %></td>
+          <td class="text-slate-400 text-xs"><%= d.date || '-' %></td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</div>
+
+<p class="text-xs text-slate-500 mt-3">Note: Approve/reject কাজ Telegram bot এ admin command দিয়ে হবে। এই panel শুধু read-only tracking এর জন্য।</p>
+
+<%- include('partials/footer') %>

@@ -1,0 +1,31 @@
+<%- include('partials/header', { title: 'Orders', msg: null, currentPath }) %>
+
+<h1 class="text-2xl font-bold mb-4">📥 Orders</h1>
+
+<form class="mb-4 flex gap-2">
+  <input name="q" value="<%= q %>" placeholder="Search user/category..."
+    class="flex-1 max-w-md bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm"/>
+  <button class="bg-cyan-600 hover:bg-cyan-500 px-4 rounded text-sm">Search</button>
+</form>
+
+<div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+  <table class="w-full text-sm">
+    <thead><tr><th>ID</th><th>User</th><th>Category</th><th>Qty</th><th>Total</th><th>Date</th><th>Excel</th></tr></thead>
+    <tbody>
+      <% if (!sales.length) { %><tr><td colspan="7" class="text-center text-slate-500 py-6">No orders.</td></tr><% } %>
+      <% sales.forEach(function(s){ %>
+        <tr>
+          <td class="font-mono text-slate-500">#<%= s.id %></td>
+          <td><a href="/users/<%= s.user_id %>" class="text-cyan-400 hover:underline"><%= s.username || s.user_id %></a></td>
+          <td><%= s.category %></td>
+          <td><%= s.qty %></td>
+          <td class="text-emerald-400"><%= s.total %>৳</td>
+          <td class="text-xs text-slate-400"><%= s.date %> <%= s.time||'' %></td>
+          <td><a href="/orders/<%= s.id %>/excel" class="text-cyan-400 hover:underline text-xs">⬇ Download</a></td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</div>
+
+<%- include('partials/footer') %>
