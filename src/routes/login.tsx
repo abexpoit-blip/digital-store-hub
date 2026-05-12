@@ -16,8 +16,11 @@ function LoginPage() {
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setTimeout(() => nav({ to: "/dashboard" }), 600);
+    // Preview mode: any password works. Real password check happens on VPS Express backend.
+    setTimeout(() => nav({ to: "/dashboard" }), 400);
   };
+
+  const skipLogin = () => nav({ to: "/dashboard" });
 
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden p-4">
@@ -55,9 +58,14 @@ function LoginPage() {
           {loading ? "Verifying…" : "Enter Panel"}
         </Button>
 
-        <p className="mt-6 text-center text-[11px] text-muted-foreground">
-          🔒 Session encrypted · Bot data untouched · 2026
-        </p>
+        <button type="button" onClick={skipLogin} className="mt-3 w-full rounded-lg border border-white/10 bg-white/5 py-2.5 text-sm text-muted-foreground hover:bg-white/10 hover:text-foreground transition">
+          → Skip & Enter Demo Panel
+        </button>
+
+        <div className="mt-5 rounded-lg border border-warning/20 bg-warning/10 px-3 py-2 text-center text-[11px] text-warning">
+          ⚡ Preview mode — যেকোনো password কাজ করবে (try: <b>admin123</b>)<br/>
+          Real password VPS এ deploy করার সময় <code>.env</code> file এ set হবে
+        </div>
       </form>
     </div>
   );
