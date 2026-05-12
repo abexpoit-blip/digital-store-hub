@@ -55,9 +55,9 @@ function LoginPage() {
           {loading ? "Verifying…" : "Enter Panel"}
         </Button>
 
-        <button type="button" onClick={skipLogin} className="mt-3 w-full rounded-lg border border-white/10 bg-white/5 py-2.5 text-sm text-muted-foreground hover:bg-white/10 hover:text-foreground transition">
+        <Link to="/dashboard" className="mt-3 block w-full rounded-lg border border-primary/30 bg-primary/10 py-2.5 text-center text-sm font-semibold text-primary hover:bg-primary/20 transition">
           → Skip & Enter Demo Panel
-        </button>
+        </Link>
 
         <div className="mt-5 rounded-lg border border-warning/20 bg-warning/10 px-3 py-2 text-center text-[11px] text-warning">
           ⚡ Preview mode — যেকোনো password কাজ করবে (try: <b>admin123</b>)<br/>
