@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { Sparkles, Lock, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -16,11 +16,8 @@ function LoginPage() {
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    // Preview mode: any password works. Real password check happens on VPS Express backend.
-    setTimeout(() => nav({ to: "/dashboard" }), 400);
+    nav({ to: "/dashboard" });
   };
-
-  const skipLogin = () => nav({ to: "/dashboard" });
 
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden p-4">
