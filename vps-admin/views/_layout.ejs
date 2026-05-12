@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title><%= title || 'Basictrick Admin' %></title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  body { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto; }
+  .nav-link.active { background:#1e293b; color:#22d3ee; }
+</style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen">
+<div class="flex min-h-screen">
+  <!-- Sidebar -->
+  <aside class="w-60 bg-slate-900 border-r border-slate-800 flex flex-col">
+    <div class="px-5 py-5 border-b border-slate-800">
+      <div class="text-cyan-400 font-bold text-lg">★ BASICTRICK</div>
+      <div class="text-xs text-slate-400">Admin Panel</div>
+    </div>
+    <nav class="flex-1 p-3 space-y-1 text-sm">
+      <% const links = [
+        ['/', '📊 Dashboard'],
+        ['/users', '👥 Users'],
+        ['/deposits', '💰 Deposits'],
+        ['/stock', '📦 Stock'],
+        ['/replace', '🔄 Replace Requests'],
+        ['/orders', '📥 Orders'],
+        ['/audit', '📜 Audit Log'],
+      ]; %>
+      <% links.forEach(([href, label]) => { %>
+        <a href="<%= href %>"
+           class="nav-link block px-3 py-2 rounded-md text-slate-300 hover:bg-slate-800 <%= (currentPath === href || (href !== '/' && currentPath.startsWith(href))) ? 'active' : '' %>">
+          <%= label %>
+        </a>
+      <% }) %>
+    </nav>
+    <form method="post" action="/logout" class="p-3 border-t border-slate-800">
+      <button class="w-full text-left px-3 py-2 rounded-md text-rose-400 hover:bg-slate-800 text-sm">↪ Logout</button>
+    </form>
+  </aside>
+
+  <!-- Main -->
+  <main class="flex-1 overflow-x-auto">
+    <% if (typeof msg !== 'undefined' && msg) { %>
+      <div class="bg-cyan-900/30 border-b border-cyan-700/50 text-cyan-200 px-6 py-2 text-sm"><%= msg %></div>
+    <% } %>
+    <div class="p-6">
+      <%- body %>
+    </div>
+  </main>
+</div>
+</body>
+</html>

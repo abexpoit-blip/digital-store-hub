@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Login — Basictrick Admin</title>
+<script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex items-center justify-center">
+  <form method="post" action="/login" class="bg-slate-900 border border-slate-800 rounded-2xl p-8 w-full max-w-sm shadow-2xl">
+    <div class="text-center mb-6">
+      <div class="text-cyan-400 text-2xl font-bold">★ BASICTRICK</div>
+      <div class="text-slate-400 text-sm mt-1">Admin Panel Login</div>
+    </div>
+    <% if (error) { %>
+      <div class="bg-rose-900/40 border border-rose-700 text-rose-200 text-sm p-3 rounded mb-4"><%= error %></div>
+    <% } %>
+    <label class="block text-sm text-slate-400 mb-2">Master Password</label>
+    <input type="password" name="password" required autofocus
+           class="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 mb-4 focus:outline-none focus:border-cyan-500"/>
+    <button class="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-semibold py-2 rounded">Sign In</button>
+  </form>
+</body>
+</html>
