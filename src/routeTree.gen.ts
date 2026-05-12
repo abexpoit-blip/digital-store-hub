@@ -9,38 +9,185 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as AdminRouteImport } from './routes/_admin'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AdminUsersRouteImport } from './routes/_admin/users'
+import { Route as AdminStockRouteImport } from './routes/_admin/stock'
+import { Route as AdminReplaceRouteImport } from './routes/_admin/replace'
+import { Route as AdminOrdersRouteImport } from './routes/_admin/orders'
+import { Route as AdminDepositsRouteImport } from './routes/_admin/deposits'
+import { Route as AdminDashboardRouteImport } from './routes/_admin/dashboard'
+import { Route as AdminBroadcastRouteImport } from './routes/_admin/broadcast'
+import { Route as AdminBotControlRouteImport } from './routes/_admin/bot-control'
+import { Route as AdminAuditRouteImport } from './routes/_admin/audit'
 
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/_admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminUsersRoute = AdminUsersRouteImport.update({
+  id: '/users',
+  path: '/users',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminStockRoute = AdminStockRouteImport.update({
+  id: '/stock',
+  path: '/stock',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminReplaceRoute = AdminReplaceRouteImport.update({
+  id: '/replace',
+  path: '/replace',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminOrdersRoute = AdminOrdersRouteImport.update({
+  id: '/orders',
+  path: '/orders',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminDepositsRoute = AdminDepositsRouteImport.update({
+  id: '/deposits',
+  path: '/deposits',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminDashboardRoute = AdminDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminBroadcastRoute = AdminBroadcastRouteImport.update({
+  id: '/broadcast',
+  path: '/broadcast',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminBotControlRoute = AdminBotControlRouteImport.update({
+  id: '/bot-control',
+  path: '/bot-control',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminAuditRoute = AdminAuditRouteImport.update({
+  id: '/audit',
+  path: '/audit',
+  getParentRoute: () => AdminRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
+  '/audit': typeof AdminAuditRoute
+  '/bot-control': typeof AdminBotControlRoute
+  '/broadcast': typeof AdminBroadcastRoute
+  '/dashboard': typeof AdminDashboardRoute
+  '/deposits': typeof AdminDepositsRoute
+  '/orders': typeof AdminOrdersRoute
+  '/replace': typeof AdminReplaceRoute
+  '/stock': typeof AdminStockRoute
+  '/users': typeof AdminUsersRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
+  '/audit': typeof AdminAuditRoute
+  '/bot-control': typeof AdminBotControlRoute
+  '/broadcast': typeof AdminBroadcastRoute
+  '/dashboard': typeof AdminDashboardRoute
+  '/deposits': typeof AdminDepositsRoute
+  '/orders': typeof AdminOrdersRoute
+  '/replace': typeof AdminReplaceRoute
+  '/stock': typeof AdminStockRoute
+  '/users': typeof AdminUsersRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/_admin': typeof AdminRouteWithChildren
+  '/login': typeof LoginRoute
+  '/_admin/audit': typeof AdminAuditRoute
+  '/_admin/bot-control': typeof AdminBotControlRoute
+  '/_admin/broadcast': typeof AdminBroadcastRoute
+  '/_admin/dashboard': typeof AdminDashboardRoute
+  '/_admin/deposits': typeof AdminDepositsRoute
+  '/_admin/orders': typeof AdminOrdersRoute
+  '/_admin/replace': typeof AdminReplaceRoute
+  '/_admin/stock': typeof AdminStockRoute
+  '/_admin/users': typeof AdminUsersRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/login'
+    | '/audit'
+    | '/bot-control'
+    | '/broadcast'
+    | '/dashboard'
+    | '/deposits'
+    | '/orders'
+    | '/replace'
+    | '/stock'
+    | '/users'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/login'
+    | '/audit'
+    | '/bot-control'
+    | '/broadcast'
+    | '/dashboard'
+    | '/deposits'
+    | '/orders'
+    | '/replace'
+    | '/stock'
+    | '/users'
+  id:
+    | '__root__'
+    | '/'
+    | '/_admin'
+    | '/login'
+    | '/_admin/audit'
+    | '/_admin/bot-control'
+    | '/_admin/broadcast'
+    | '/_admin/dashboard'
+    | '/_admin/deposits'
+    | '/_admin/orders'
+    | '/_admin/replace'
+    | '/_admin/stock'
+    | '/_admin/users'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminRoute: typeof AdminRouteWithChildren
+  LoginRoute: typeof LoginRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_admin': {
+      id: '/_admin'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -48,22 +195,103 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_admin/users': {
+      id: '/_admin/users'
+      path: '/users'
+      fullPath: '/users'
+      preLoaderRoute: typeof AdminUsersRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/stock': {
+      id: '/_admin/stock'
+      path: '/stock'
+      fullPath: '/stock'
+      preLoaderRoute: typeof AdminStockRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/replace': {
+      id: '/_admin/replace'
+      path: '/replace'
+      fullPath: '/replace'
+      preLoaderRoute: typeof AdminReplaceRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/orders': {
+      id: '/_admin/orders'
+      path: '/orders'
+      fullPath: '/orders'
+      preLoaderRoute: typeof AdminOrdersRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/deposits': {
+      id: '/_admin/deposits'
+      path: '/deposits'
+      fullPath: '/deposits'
+      preLoaderRoute: typeof AdminDepositsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/dashboard': {
+      id: '/_admin/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof AdminDashboardRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/broadcast': {
+      id: '/_admin/broadcast'
+      path: '/broadcast'
+      fullPath: '/broadcast'
+      preLoaderRoute: typeof AdminBroadcastRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/bot-control': {
+      id: '/_admin/bot-control'
+      path: '/bot-control'
+      fullPath: '/bot-control'
+      preLoaderRoute: typeof AdminBotControlRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/audit': {
+      id: '/_admin/audit'
+      path: '/audit'
+      fullPath: '/audit'
+      preLoaderRoute: typeof AdminAuditRouteImport
+      parentRoute: typeof AdminRoute
+    }
   }
 }
 
+interface AdminRouteChildren {
+  AdminAuditRoute: typeof AdminAuditRoute
+  AdminBotControlRoute: typeof AdminBotControlRoute
+  AdminBroadcastRoute: typeof AdminBroadcastRoute
+  AdminDashboardRoute: typeof AdminDashboardRoute
+  AdminDepositsRoute: typeof AdminDepositsRoute
+  AdminOrdersRoute: typeof AdminOrdersRoute
+  AdminReplaceRoute: typeof AdminReplaceRoute
+  AdminStockRoute: typeof AdminStockRoute
+  AdminUsersRoute: typeof AdminUsersRoute
+}
+
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminAuditRoute: AdminAuditRoute,
+  AdminBotControlRoute: AdminBotControlRoute,
+  AdminBroadcastRoute: AdminBroadcastRoute,
+  AdminDashboardRoute: AdminDashboardRoute,
+  AdminDepositsRoute: AdminDepositsRoute,
+  AdminOrdersRoute: AdminOrdersRoute,
+  AdminReplaceRoute: AdminReplaceRoute,
+  AdminStockRoute: AdminStockRoute,
+  AdminUsersRoute: AdminUsersRoute,
+}
+
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminRoute: AdminRouteWithChildren,
+  LoginRoute: LoginRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
