@@ -16,8 +16,11 @@ function LoginPage() {
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setTimeout(() => nav({ to: "/dashboard" }), 600);
+    // Preview mode: any password works. Real password check happens on VPS Express backend.
+    setTimeout(() => nav({ to: "/dashboard" }), 400);
   };
+
+  const skipLogin = () => nav({ to: "/dashboard" });
 
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden p-4">
