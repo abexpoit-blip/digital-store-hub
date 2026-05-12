@@ -70,7 +70,3 @@ function LoginPage() {
     </div>
   );
 }
-      </form>
-    </div>
-  );
-}
