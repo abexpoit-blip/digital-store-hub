@@ -1,0 +1,23 @@
+<%- include('partials/header', { title: 'Audit Log', msg: null, currentPath }) %>
+
+<h1 class="text-2xl font-bold mb-4">📜 Audit Log</h1>
+
+<div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+  <table class="w-full text-sm">
+    <thead><tr><th>ID</th><th>Actor</th><th>Action</th><th>Details</th><th>Time</th></tr></thead>
+    <tbody>
+      <% if (!rows.length) { %><tr><td colspan="5" class="text-center text-slate-500 py-6">Empty.</td></tr><% } %>
+      <% rows.forEach(function(r){ %>
+        <tr>
+          <td class="font-mono text-slate-500">#<%= r.id %></td>
+          <td><%= r.actor %></td>
+          <td class="text-cyan-400"><%= r.action %></td>
+          <td class="text-xs text-slate-300 font-mono"><%= r.details %></td>
+          <td class="text-xs text-slate-400"><%= new Date(r.timestamp).toLocaleString('en-GB') %></td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</div>
+
+<%- include('partials/footer') %>

@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title><%= typeof title !== 'undefined' ? title : 'Basictrick Admin' %></title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  body { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto; }
+  .nav-link.active { background:#1e293b; color:#22d3ee; }
+  table { border-collapse: collapse; }
+  th, td { padding: 0.6rem 0.75rem; text-align: left; }
+  th { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: #94a3b8; background: #0f172a; }
+  tr { border-bottom: 1px solid #1e293b; }
+  tr:hover { background: #0f172a; }
+</style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen">
+<div class="flex min-h-screen">
+  <aside class="w-60 bg-slate-900 border-r border-slate-800 flex flex-col shrink-0">
+    <div class="px-5 py-5 border-b border-slate-800">
+      <div class="text-cyan-400 font-bold text-lg">★ BASICTRICK</div>
+      <div class="text-xs text-slate-400">Admin Panel</div>
+    </div>
+    <nav class="flex-1 p-3 space-y-1 text-sm">
+      <% const _links = [
+        ['/', '📊 Dashboard'],
+        ['/users', '👥 Users'],
+        ['/deposits', '💰 Deposits'],
+        ['/stock', '📦 Stock'],
+        ['/replace', '🔄 Replace Requests'],
+        ['/orders', '📥 Orders'],
+        ['/audit', '📜 Audit Log'],
+      ]; %>
+      <% _links.forEach(function(l){ var href=l[0], label=l[1];
+         var active = (currentPath === href) || (href !== '/' && currentPath.startsWith(href)); %>
+        <a href="<%= href %>"
+           class="nav-link block px-3 py-2 rounded-md text-slate-300 hover:bg-slate-800 <%= active ? 'active' : '' %>">
+          <%= label %>
+        </a>
+      <% }) %>
+    </nav>
+    <form method="post" action="/logout" class="p-3 border-t border-slate-800">
+      <button class="w-full text-left px-3 py-2 rounded-md text-rose-400 hover:bg-slate-800 text-sm">↪ Logout</button>
+    </form>
+  </aside>
+  <main class="flex-1 overflow-x-auto">
+    <% if (typeof msg !== 'undefined' && msg) { %>
+      <div class="bg-cyan-900/30 border-b border-cyan-700/50 text-cyan-200 px-6 py-2 text-sm"><%= msg %></div>
+    <% } %>
+    <div class="p-6">

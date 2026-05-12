@@ -1,0 +1,92 @@
+<%- include('partials/header', { title: 'Dashboard', msg, currentPath }) %>
+
+<div class="flex items-center justify-between mb-6">
+  <h1 class="text-2xl font-bold">Dashboard</h1>
+  <form method="post" action="/bot-status" class="flex items-center gap-2">
+    <span class="text-sm text-slate-400">Bot:</span>
+    <span class="px-2 py-1 rounded text-xs <%= botStatus === 'open' ? 'bg-emerald-700/40 text-emerald-300' : 'bg-rose-700/40 text-rose-300' %>"><%= botStatus.toUpperCase() %></span>
+    <input type="hidden" name="status" value="<%= botStatus === 'open' ? 'closed' : 'open' %>"/>
+    <button class="text-xs px-3 py-1 bg-slate-800 hover:bg-slate-700 rounded">Toggle</button>
+  </form>
+</div>
+
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+  <div class="bg-slate-900 border border-slate-800 p-4 rounded-xl">
+    <div class="text-xs text-slate-400">Total Users</div>
+    <div class="text-2xl font-bold mt-1"><%= totalUsers.toLocaleString() %></div>
+    <div class="text-xs text-rose-400 mt-1"><%= bannedUsers %> banned</div>
+  </div>
+  <div class="bg-slate-900 border border-slate-800 p-4 rounded-xl">
+    <div class="text-xs text-slate-400">Total User Balance</div>
+    <div class="text-2xl font-bold mt-1 text-emerald-400"><%= totalBalance.toLocaleString() %>৳</div>
+  </div>
+  <div class="bg-slate-900 border border-slate-800 p-4 rounded-xl">
+    <div class="text-xs text-slate-400">Today's Deposits</div>
+    <div class="text-2xl font-bold mt-1 text-cyan-400"><%= todayDeposits.s.toLocaleString() %>৳</div>
+    <div class="text-xs text-slate-500 mt-1"><%= todayDeposits.c %> transactions</div>
+  </div>
+  <div class="bg-slate-900 border border-slate-800 p-4 rounded-xl">
+    <div class="text-xs text-slate-400">Total Approved Deposits</div>
+    <div class="text-2xl font-bold mt-1"><%= totalApproved.toLocaleString() %>৳</div>
+    <div class="text-xs text-amber-400 mt-1"><%= pendingPayments %> pending</div>
+  </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+  <div class="bg-slate-900 border border-slate-800 p-5 rounded-xl">
+    <div class="flex items-center justify-between mb-3">
+      <div class="text-sm font-semibold">📦 Stock by Category</div>
+      <div class="text-xs text-slate-400">Total: <%= totalStock %></div>
+    </div>
+    <% if (!stockByCategory.length) { %>
+      <div class="text-slate-500 text-sm">No stock yet.</div>
+    <% } else { %>
+      <% stockByCategory.forEach(function(s){ %>
+        <div class="flex justify-between text-sm py-1 border-b border-slate-800/50">
+          <span class="text-slate-300"><%= s.category %></span>
+          <span class="font-mono <%= s.c < 5 ? 'text-rose-400' : 'text-emerald-400' %>"><%= s.c %></span>
+        </div>
+      <% }) %>
+    <% } %>
+  </div>
+
+  <div class="bg-slate-900 border border-slate-800 p-5 rounded-xl">
+    <div class="text-sm font-semibold mb-3">🔄 Replace Requests</div>
+    <div class="text-3xl font-bold text-amber-400"><%= pendingReplaces %></div>
+    <div class="text-xs text-slate-400 mt-1">Pending — admin action দরকার</div>
+    <a href="/replace" class="inline-block mt-3 text-xs text-cyan-400 hover:underline">View all →</a>
+  </div>
+
+  <div class="bg-slate-900 border border-slate-800 p-5 rounded-xl">
+    <div class="text-sm font-semibold mb-3">🔐 Change Password</div>
+    <form method="post" action="/change-password" class="space-y-2">
+      <input type="password" name="current" placeholder="Current password" required class="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 text-sm"/>
+      <input type="password" name="next" placeholder="New password (min 6)" required minlength="6" class="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 text-sm"/>
+      <button class="w-full bg-cyan-600 hover:bg-cyan-500 text-white text-sm py-1.5 rounded">Update</button>
+    </form>
+  </div>
+</div>
+
+<div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+  <div class="px-5 py-3 border-b border-slate-800 text-sm font-semibold">📥 Recent Sales</div>
+  <table class="w-full text-sm">
+    <thead><tr><th>ID</th><th>User</th><th>Category</th><th>Qty</th><th>Total</th><th>Date</th></tr></thead>
+    <tbody>
+      <% if (!recentSales.length) { %>
+        <tr><td colspan="6" class="text-center text-slate-500 py-6">No sales yet.</td></tr>
+      <% } %>
+      <% recentSales.forEach(function(s){ %>
+        <tr>
+          <td class="font-mono text-slate-500">#<%= s.id %></td>
+          <td><a href="/users/<%= s.user_id %>" class="text-cyan-400 hover:underline"><%= s.username || s.user_id %></a></td>
+          <td><%= s.category %></td>
+          <td><%= s.qty %></td>
+          <td class="text-emerald-400"><%= s.total %>৳</td>
+          <td class="text-slate-400 text-xs"><%= s.date %> <%= s.time || '' %></td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</div>
+
+<%- include('partials/footer') %>

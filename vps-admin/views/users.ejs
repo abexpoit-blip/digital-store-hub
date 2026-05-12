@@ -1,0 +1,36 @@
+<%- include('partials/header', { title: 'Users', msg, currentPath }) %>
+
+<h1 class="text-2xl font-bold mb-4">👥 Users</h1>
+
+<form class="mb-4 flex gap-2">
+  <input name="q" value="<%= q %>" placeholder="Search by username or ID..."
+    class="flex-1 max-w-md bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm"/>
+  <button class="bg-cyan-600 hover:bg-cyan-500 px-4 rounded text-sm">Search</button>
+  <% if (q) { %><a href="/users" class="px-4 py-2 text-sm text-slate-400 hover:text-white">Clear</a><% } %>
+</form>
+
+<div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+  <table class="w-full text-sm">
+    <thead><tr><th>User ID</th><th>Username</th><th>Balance</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+      <% if (!users.length) { %>
+        <tr><td colspan="5" class="text-center text-slate-500 py-6">No users found.</td></tr>
+      <% } %>
+      <% users.forEach(function(u){ %>
+        <tr>
+          <td class="font-mono text-slate-400"><%= u.user_id %></td>
+          <td><%= u.username || '-' %></td>
+          <td class="text-emerald-400"><%= (u.balance||0).toLocaleString() %>৳</td>
+          <td>
+            <% if (u.is_banned) { %><span class="bg-rose-700/40 text-rose-300 px-2 py-0.5 rounded text-xs">BANNED</span>
+            <% } else { %><span class="bg-emerald-700/40 text-emerald-300 px-2 py-0.5 rounded text-xs">Active</span><% } %>
+          </td>
+          <td><a href="/users/<%= u.user_id %>" class="text-cyan-400 hover:underline text-xs">View →</a></td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</div>
+<p class="text-xs text-slate-500 mt-3">Showing first 200 results.</p>
+
+<%- include('partials/footer') %>

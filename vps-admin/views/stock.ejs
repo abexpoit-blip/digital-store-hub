@@ -1,0 +1,87 @@
+<%- include('partials/header', { title: 'Stock', msg, currentPath }) %>
+
+<h1 class="text-2xl font-bold mb-4">📦 Stock Management</h1>
+
+<% if (preview && preview.length) { %>
+  <div class="bg-amber-900/20 border border-amber-700/50 rounded-xl p-5 mb-6">
+    <div class="text-sm font-semibold text-amber-200 mb-2">⚠ Preview — <%= previewCount %> items found. Confirm to insert.</div>
+    <div class="max-h-64 overflow-y-auto bg-slate-950 rounded p-2 mb-3">
+      <table class="w-full text-xs">
+        <thead><tr><th>#</th><th>Category</th><th>Data</th></tr></thead>
+        <tbody>
+          <% preview.forEach(function(p, i){ %>
+            <tr><td class="text-slate-500"><%= i+1 %></td><td class="text-cyan-400"><%= p.category %></td><td class="font-mono text-slate-300"><%= p.data.length>80 ? p.data.slice(0,80)+'...' : p.data %></td></tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+    <div class="flex gap-2">
+      <form method="post" action="/stock/confirm"><button class="bg-emerald-600 hover:bg-emerald-500 px-4 py-2 rounded text-sm font-semibold">✅ Confirm Insert</button></form>
+      <form method="post" action="/stock/cancel"><button class="bg-slate-700 hover:bg-slate-600 px-4 py-2 rounded text-sm">Cancel</button></form>
+    </div>
+  </div>
+<% } %>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+  <form method="post" action="/stock/upload" enctype="multipart/form-data"
+        class="bg-slate-900 border border-slate-800 p-5 rounded-xl">
+    <div class="text-sm font-semibold mb-3">📤 Bulk Upload (Excel / .xlsx)</div>
+    <p class="text-xs text-slate-400 mb-3">
+      Excel format: column A = <code class="bg-slate-800 px-1 rounded">category</code>, column B = <code class="bg-slate-800 px-1 rounded">data</code>।
+      প্রথম row হবে header।
+    </p>
+    <input type="file" name="file" accept=".xlsx,.xls" required
+      class="w-full text-sm text-slate-300 file:mr-3 file:bg-cyan-600 file:text-white file:border-0 file:px-3 file:py-1.5 file:rounded mb-3"/>
+    <button class="w-full bg-cyan-600 hover:bg-cyan-500 py-2 rounded text-sm font-semibold">Upload & Preview</button>
+  </form>
+
+  <form method="post" action="/stock/manual"
+        class="bg-slate-900 border border-slate-800 p-5 rounded-xl">
+    <div class="text-sm font-semibold mb-3">✍ Manual Add</div>
+    <input name="category" required placeholder="Category (e.g., fb61, fb1000, tempid)"
+      class="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm mb-2"/>
+    <textarea name="data" required rows="5" placeholder="প্রতি লাইনে একটা data..."
+      class="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm font-mono mb-3"></textarea>
+    <button class="w-full bg-cyan-600 hover:bg-cyan-500 py-2 rounded text-sm font-semibold">Add</button>
+  </form>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+  <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+    <div class="px-4 py-3 border-b border-slate-800 text-sm font-semibold">📊 Stock by Category</div>
+    <table class="w-full text-sm">
+      <thead><tr><th>Category</th><th>Count</th><th></th></tr></thead>
+      <tbody>
+        <% if (!byCategory.length) { %><tr><td colspan="3" class="text-center text-slate-500 py-4">Empty</td></tr><% } %>
+        <% byCategory.forEach(function(c){ %>
+          <tr>
+            <td class="font-semibold"><%= c.category %></td>
+            <td class="font-mono <%= c.c < 5 ? 'text-rose-400' : 'text-emerald-400' %>"><%= c.c %></td>
+            <td>
+              <form method="post" action="/stock/clear/<%= encodeURIComponent(c.category) %>"
+                onsubmit="return confirm('Sure delete all <%= c.c %> items from <%= c.category %>?');">
+                <button class="text-xs text-rose-400 hover:text-rose-300">Clear all</button>
+              </form>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+    <div class="px-4 py-3 border-b border-slate-800 text-sm font-semibold">📜 Recent Stock</div>
+    <div class="max-h-96 overflow-y-auto">
+      <table class="w-full text-xs">
+        <thead><tr><th>ID</th><th>Cat</th><th>Preview</th></tr></thead>
+        <tbody>
+          <% recent.forEach(function(r){ %>
+            <tr><td class="text-slate-500">#<%= r.id %></td><td class="text-cyan-400"><%= r.category %></td><td class="font-mono text-slate-400"><%= r.preview %></td></tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<%- include('partials/footer') %>
