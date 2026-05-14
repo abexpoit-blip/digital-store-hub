@@ -2,11 +2,27 @@
 
 <h1 class="text-2xl font-bold mb-4">👥 Users</h1>
 
+<div class="flex gap-2 mb-4 text-sm">
+  <a href="/users?filter=all<%= q?'&q='+encodeURIComponent(q):'' %>"
+     class="px-3 py-1.5 rounded <%= filter==='all'?'bg-cyan-600 text-white':'bg-slate-800 text-slate-300 hover:bg-slate-700' %>">
+     All <span class="opacity-70">(<%= counts.all %>)</span>
+  </a>
+  <a href="/users?filter=active<%= q?'&q='+encodeURIComponent(q):'' %>"
+     class="px-3 py-1.5 rounded <%= filter==='active'?'bg-emerald-600 text-white':'bg-slate-800 text-slate-300 hover:bg-slate-700' %>">
+     ✅ Active <span class="opacity-70">(<%= counts.active %>)</span>
+  </a>
+  <a href="/users?filter=banned<%= q?'&q='+encodeURIComponent(q):'' %>"
+     class="px-3 py-1.5 rounded <%= filter==='banned'?'bg-rose-600 text-white':'bg-slate-800 text-slate-300 hover:bg-slate-700' %>">
+     🚫 Banned <span class="opacity-70">(<%= counts.banned %>)</span>
+  </a>
+</div>
+
 <form class="mb-4 flex gap-2">
+  <input type="hidden" name="filter" value="<%= filter %>"/>
   <input name="q" value="<%= q %>" placeholder="Search by username or ID..."
     class="flex-1 max-w-md bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm"/>
   <button class="bg-cyan-600 hover:bg-cyan-500 px-4 rounded text-sm">Search</button>
-  <% if (q) { %><a href="/users" class="px-4 py-2 text-sm text-slate-400 hover:text-white">Clear</a><% } %>
+  <% if (q) { %><a href="/users?filter=<%= filter %>" class="px-4 py-2 text-sm text-slate-400 hover:text-white">Clear</a><% } %>
 </form>
 
 <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
@@ -20,7 +36,7 @@
         <tr>
           <td class="font-mono text-slate-400"><%= u.user_id %></td>
           <td><%= u.username || '-' %></td>
-          <td class="text-emerald-400"><%= (u.balance||0).toLocaleString() %>৳</td>
+          <td class="text-emerald-400"><%= (u.balance||0).toLocaleString() %> Tk</td>
           <td>
             <% if (u.is_banned) { %><span class="bg-rose-700/40 text-rose-300 px-2 py-0.5 rounded text-xs">BANNED</span>
             <% } else { %><span class="bg-emerald-700/40 text-emerald-300 px-2 py-0.5 rounded text-xs">Active</span><% } %>
@@ -31,6 +47,6 @@
     </tbody>
   </table>
 </div>
-<p class="text-xs text-slate-500 mt-3">Showing first 200 results.</p>
+<p class="text-xs text-slate-500 mt-3">Showing first 300 results.</p>
 
 <%- include('partials/footer') %>
