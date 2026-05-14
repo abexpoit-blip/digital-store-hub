@@ -44,13 +44,22 @@ export const recentDeposits = [
   { id: 1005, user: "@hasib_pro", amount: 500, method: "Nagad", txn: "5K91PL2", time: "3 hours ago", status: "rejected" },
 ];
 
-export const stockItems = [
-  { product: "VPN Premium 1 Month", available: 142, sold: 308, price: 150 },
-  { product: "VPN Premium 3 Month", available: 67, sold: 124, price: 400 },
-  { product: "FB Ad Account $50 Limit", available: 8, sold: 245, price: 800 },
-  { product: "FB Ad Account $250 Limit", available: 23, sold: 89, price: 2500 },
-  { product: "Google Ads Threshold", available: 4, sold: 67, price: 1800 },
-  { product: "TikTok Ads Account", available: 31, sold: 42, price: 1200 },
+// Real categories from store.py / store.db (bot stock table: id, category, data)
+export type StockCategory = {
+  key: string;          // DB category value
+  product: string;      // Display name
+  icon: string;         // Emoji used in bot
+  available: number;    // COUNT(*) FROM stock WHERE category=?
+  sold: number;         // SUM(qty) FROM sales WHERE category=?
+  price: number;        // config.price_<key>
+};
+
+export const stockItems: StockCategory[] = [
+  { key: "fb61",   product: "FB 61xx ID",     icon: "📘", available: 84, sold: 1820, price: 10 },
+  { key: "fb1000", product: "FB 1000xx ID",   icon: "📕", available: 31, sold: 412,  price: 7  },
+  { key: "bmfb",   product: "Facebook BM",    icon: "💼", available: 6,  sold: 118,  price: 7  },
+  { key: "bmig",   product: "Instagram BM",   icon: "📸", available: 4,  sold: 64,   price: 7  },
+  { key: "tempid", product: "Temp ID",        icon: "⏱️", available: 2,  sold: 12,   price: 7  },
 ];
 
 export const replaceRequests = [
