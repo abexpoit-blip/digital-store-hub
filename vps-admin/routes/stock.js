@@ -233,16 +233,31 @@ router.post('/sell', (req, res) => {
     return res.redirect('/stock?msg=' + encodeURIComponent('❌ ' + e.message));
   }
 
-  // Log to sales table if it exists (bot's table). Best-effort — don't fail download if schema differs.
+  // Log to sales table + archive each delivered item. Best-effort — don't fail download if schema differs.
+  let saleId = null;
   try {
     const now = new Date();
     const date = now.toISOString().slice(0, 10);
     const time = now.toTimeString().slice(0, 8);
-    db.prepare(
+    const info = db.prepare(
       `INSERT INTO sales (user_id, username, category, qty, total, date, time)
        VALUES (?, ?, ?, ?, ?, ?, ?)`
     ).run(0, buyer, category, rows.length, price * rows.length, date, time);
+    saleId = info.lastInsertRowid;
   } catch (e) { /* schema mismatch — skip */ }
+
+  // Archive delivered items so admin can see exactly what each user received
+  try {
+    const archive = db.prepare(
+      `INSERT INTO delivery_archive (sale_id, user_id, username, category, stock_id, data, source, delivered_at)
+       VALUES (?, ?, ?, ?, ?, ?, 'admin', ?)`
+    );
+    const ts = Date.now();
+    const tx = db.transaction((items) => {
+      for (const r of items) archive.run(saleId, 0, buyer, category, r.id, r.data, ts);
+    });
+    tx(rows);
+  } catch (e) { /* table missing on first run */ }
 
   logAudit('admin', 'stock_sell', `category=${category} qty=${rows.length} buyer=${buyer}`);
 
