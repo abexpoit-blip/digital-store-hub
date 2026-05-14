@@ -19,20 +19,41 @@
     <option value="approved" <%= status==='approved'?'selected':'' %>>Approved</option>
     <option value="rejected" <%= status==='rejected'?'selected':'' %>>Rejected</option>
   </select>
-  <input name="q" value="<%= q %>" placeholder="user id / username"
-    class="flex-1 max-w-sm bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm"/>
+  <input name="q" value="<%= q %>" placeholder="user_id / username / sender phone / txn id"
+    class="flex-1 max-w-md bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm"/>
   <button class="bg-cyan-600 hover:bg-cyan-500 px-4 rounded text-sm">Filter</button>
 </form>
 
 <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+  <div class="overflow-x-auto">
   <table class="w-full text-sm">
-    <thead><tr><th>Req ID</th><th>User</th><th>Amount</th><th>Status</th><th>Admin</th><th>Date</th></tr></thead>
+    <thead><tr>
+      <th>Req ID</th>
+      <th>User (TG)</th>
+      <th>Sender info</th>
+      <th>Txn ID</th>
+      <th>Amount</th>
+      <th>Status</th>
+      <th>Admin</th>
+      <th>Date</th>
+    </tr></thead>
     <tbody>
-      <% if (!deposits.length) { %><tr><td colspan="6" class="text-center text-slate-500 py-6">No deposits found.</td></tr><% } %>
+      <% if (!deposits.length) { %><tr><td colspan="8" class="text-center text-slate-500 py-6">No deposits found.</td></tr><% } %>
       <% deposits.forEach(function(d){ %>
         <tr>
           <td class="font-mono text-xs text-slate-500"><%= (d.req_id||'').slice(0,12) %></td>
-          <td><a href="/users/<%= d.user_id %>" class="text-cyan-400 hover:underline"><%= d.username || d.user_id %></a></td>
+          <td>
+            <a href="/users/<%= d.user_id %>" class="text-cyan-400 hover:underline font-semibold">
+              <%= d._tg_username || d.username || 'Unknown' %>
+            </a>
+            <div class="text-[10px] text-slate-500 font-mono">ID: <%= d.user_id || '-' %></div>
+            <% if (d._tg_banned) { %><span class="text-[10px] text-rose-400">🚫 banned</span><% } %>
+          </td>
+          <td class="text-xs">
+            <div class="font-mono text-slate-300"><%= d.sender_num || '-' %></div>
+            <% if (d.method) { %><div class="text-[10px] text-slate-500"><%= d.method %></div><% } %>
+          </td>
+          <td class="font-mono text-xs text-slate-400"><%= (d.transaction_id||'-').slice(0,16) %></td>
           <td class="font-bold"><%= d.amount %>৳</td>
           <td>
             <span class="px-2 py-0.5 rounded text-xs
@@ -46,8 +67,9 @@
       <% }) %>
     </tbody>
   </table>
+  </div>
 </div>
 
-<p class="text-xs text-slate-500 mt-3">Note: Approve/reject কাজ Telegram bot এ admin command দিয়ে হবে। এই panel শুধু read-only tracking এর জন্য।</p>
+<p class="text-xs text-slate-500 mt-3">💡 Search যেকোনো field এ — telegram username, user_id, sender phone/ID, বা transaction id দিয়ে।<br>Note: Approve/reject কাজ Telegram bot এ admin command দিয়ে হবে। এই panel শুধু read-only tracking।</p>
 
 <%- include('partials/footer') %>
