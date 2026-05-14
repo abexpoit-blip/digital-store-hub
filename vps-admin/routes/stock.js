@@ -6,17 +6,29 @@ const { db, logAudit } = require('../db');
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
-function getCategories() {
-  // Bot এর existing categories from stock table
+// Bot এ যেগুলো recognize করে — শুধু এগুলোই allow করব।
+// নতুন category দরকার হলে এই array তে add করুন (এবং bot এ ও add করুন)।
+const ALLOWED_CATEGORIES = ['fb61', 'fb1000'];
+
+const SEPARATOR = '###'; // bot এর multi-upload separator
+
+function getCategoryStats() {
   return db.prepare('SELECT category, COUNT(*) AS c FROM stock GROUP BY category ORDER BY category ASC').all();
 }
 
 function renderPage(extra = {}) {
-  const byCategory = getCategories();
+  const byCategory = getCategoryStats();
   const recent = db.prepare('SELECT id, category, substr(data,1,80) AS preview FROM stock ORDER BY id DESC LIMIT 50').all();
+  // Show ALL allowed categories even if 0 count, so admin sees full list
+  const statsMap = Object.fromEntries(byCategory.map(c => [c.category, c.c]));
+  const fullCategoryList = ALLOWED_CATEGORIES.map(cat => ({ category: cat, c: statsMap[cat] || 0 }));
+  // Append any unknown categories already in DB (so admin sees them)
+  byCategory.forEach(c => {
+    if (!ALLOWED_CATEGORIES.includes(c.category)) fullCategoryList.push({ category: c.category, c: c.c, unknown: true });
+  });
   return {
-    byCategory,
-    categories: byCategory.map(c => c.category),
+    byCategory: fullCategoryList,
+    allowedCategories: ALLOWED_CATEGORIES,
     recent,
     preview: null,
     previewCount: 0,
@@ -26,21 +38,50 @@ function renderPage(extra = {}) {
   };
 }
 
+// Parse stock items from raw text input.
+// Supports:
+//   1) Multiple items on separate lines
+//   2) Multiple items separated by ###
+//   3) Each item: "UID PASS COOKIES" (space-separated, COOKIES can contain spaces — only first 2 spaces split)
+function parseStockItems(rawText) {
+  if (!rawText) return [];
+  // Split by newlines AND ### separator
+  const chunks = rawText
+    .split(/\r?\n|###/)
+    .map(s => s.trim())
+    .filter(Boolean);
+  return chunks;
+}
+
+// Parse Excel — supports either:
+//   A) Single column = full "UID PASS COOKIES" string per row
+//   B) 3 columns = UID | PASS | COOKIES (auto-joined with space, exactly like /add command)
+function parseExcelRow(row) {
+  // row is array of cells
+  const nonEmpty = row.map(c => (c ?? '').toString().trim()).filter(Boolean);
+  if (!nonEmpty.length) return null;
+  if (nonEmpty.length === 1) return nonEmpty[0]; // already-formatted single cell
+  if (nonEmpty.length >= 3) {
+    // UID PASS COOKIES — join all with space (cookies may have multiple parts)
+    return nonEmpty.join(' ');
+  }
+  // 2 cells — likely incomplete, skip
+  return null;
+}
+
 router.get('/', (req, res) => {
   res.render('stock', renderPage({ msg: req.query.msg || null }));
 });
 
-// Upload xlsx — preview rows
+// Excel upload → preview
 router.post('/upload', upload.single('file'), (req, res) => {
   if (!req.file) return res.redirect('/stock?msg=No+file');
 
-  const mode = req.body.mode || 'single'; // 'single' or 'multi'
-  const selectedCat = (req.body.category || '').trim();
-  const newCat = (req.body.new_category || '').trim();
-  const targetCategory = newCat || selectedCat;
-
-  if (mode === 'single' && !targetCategory) {
-    return res.redirect('/stock?msg=' + encodeURIComponent('❌ Single mode এ category select করুন'));
+  const targetCategory = (req.body.category || '').trim();
+  if (!ALLOWED_CATEGORIES.includes(targetCategory)) {
+    return res.redirect('/stock?msg=' + encodeURIComponent(
+      `❌ Invalid category. শুধু এগুলো allowed: ${ALLOWED_CATEGORIES.join(', ')}`
+    ));
   }
 
   let wb;
@@ -50,53 +91,35 @@ router.post('/upload', upload.single('file'), (req, res) => {
     return res.redirect('/stock?msg=' + encodeURIComponent('❌ Invalid Excel file: ' + e.message));
   }
   const sheet = wb.Sheets[wb.SheetNames[0]];
-  // Read as array-of-arrays so we don't depend on header names
   const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
 
-  let normalized = [];
-  if (mode === 'single') {
-    // Every cell in column A becomes a stock entry under targetCategory.
-    // Skip first row if it looks like a header (e.g. "data", "id", "category").
-    const headerRe = /^(data|id|category|stock|item|value)$/i;
-    let startIdx = 0;
-    if (rows.length && rows[0][0] && headerRe.test(String(rows[0][0]).trim())) startIdx = 1;
-    for (let i = startIdx; i < rows.length; i++) {
-      const v = (rows[i][0] ?? '').toString().trim();
-      if (v) normalized.push({ category: targetCategory, data: v });
-    }
-  } else {
-    // Multi mode: column A = category, column B = data. Skip header row.
-    let startIdx = 0;
-    if (rows.length && /^category$/i.test(String(rows[0][0] || '').trim())) startIdx = 1;
-    for (let i = startIdx; i < rows.length; i++) {
-      const c = (rows[i][0] ?? '').toString().trim();
-      const d = (rows[i][1] ?? '').toString().trim();
-      if (c && d) normalized.push({ category: c, data: d });
-    }
+  // Skip header row if first cell looks like a label
+  const headerRe = /^(uid|pass|password|cookies?|data|id|category)$/i;
+  let startIdx = 0;
+  if (rows.length && rows[0].some(c => c && headerRe.test(String(c).trim()))) startIdx = 1;
+
+  const items = [];
+  for (let i = startIdx; i < rows.length; i++) {
+    const dataStr = parseExcelRow(rows[i]);
+    if (dataStr) items.push({ category: targetCategory, data: dataStr });
   }
 
-  if (!normalized.length) {
-    return res.redirect('/stock?msg=' + encodeURIComponent('❌ Excel এ valid data পাওয়া যায়নি'));
+  if (!items.length) {
+    return res.redirect('/stock?msg=' + encodeURIComponent('❌ Excel এ valid row পাওয়া যায়নি'));
   }
 
-  // Duplicate detection — check against existing stock
-  const existSet = new Set(
-    db.prepare('SELECT data FROM stock').all().map(r => r.data)
-  );
+  // Duplicate detection
+  const existSet = new Set(db.prepare('SELECT data FROM stock').all().map(r => r.data));
   let duplicates = 0;
   const seen = new Set();
   const unique = [];
-  for (const item of normalized) {
-    const key = item.category + '||' + item.data;
-    if (existSet.has(item.data) || seen.has(key)) { duplicates++; continue; }
-    seen.add(key);
-    unique.push(item);
+  for (const it of items) {
+    if (existSet.has(it.data) || seen.has(it.data)) { duplicates++; continue; }
+    seen.add(it.data);
+    unique.push(it);
   }
 
-  // Group preview by category
-  const previewByCat = {};
-  unique.forEach(it => { previewByCat[it.category] = (previewByCat[it.category] || 0) + 1; });
-
+  const previewByCat = { [targetCategory]: unique.length };
   req.session.pendingStock = unique;
 
   res.render('stock', renderPage({
@@ -113,12 +136,9 @@ router.post('/confirm', (req, res) => {
   if (!pending.length) return res.redirect('/stock?msg=Nothing+to+confirm');
 
   const insert = db.prepare('INSERT INTO stock (category, data) VALUES (?, ?)');
-  const tx = db.transaction((items) => {
-    for (const it of items) insert.run(it.category, it.data);
-  });
+  const tx = db.transaction((items) => { for (const it of items) insert.run(it.category, it.data); });
   tx(pending);
 
-  // Per-category breakdown for audit
   const breakdown = {};
   pending.forEach(p => { breakdown[p.category] = (breakdown[p.category] || 0) + 1; });
   const summary = Object.entries(breakdown).map(([k, v]) => `${k}:${v}`).join(', ');
@@ -133,27 +153,38 @@ router.post('/cancel', (req, res) => {
   res.redirect('/stock?msg=Upload+cancelled');
 });
 
+// Manual textarea — supports newline OR ### separator, exactly like bot
 router.post('/manual', (req, res) => {
-  const selectedCat = (req.body.category || '').trim();
-  const newCat = (req.body.new_category || '').trim();
-  const category = newCat || selectedCat;
-  const lines = (req.body.data || '').split('\n').map(s => s.trim()).filter(Boolean);
-  if (!category || !lines.length) {
-    return res.redirect('/stock?msg=' + encodeURIComponent('❌ Category এবং data দুটোই লাগবে'));
+  const category = (req.body.category || '').trim();
+  if (!ALLOWED_CATEGORIES.includes(category)) {
+    return res.redirect('/stock?msg=' + encodeURIComponent(
+      `❌ Invalid category. শুধু এগুলো allowed: ${ALLOWED_CATEGORIES.join(', ')}`
+    ));
   }
 
-  // De-duplicate against existing stock
+  const items = parseStockItems(req.body.data || '');
+  if (!items.length) {
+    return res.redirect('/stock?msg=' + encodeURIComponent('❌ Data খালি'));
+  }
+
   const existSet = new Set(db.prepare('SELECT data FROM stock').all().map(r => r.data));
-  const unique = lines.filter(d => !existSet.has(d));
-  const duplicates = lines.length - unique.length;
+  const unique = [];
+  const seen = new Set();
+  let duplicates = 0;
+  for (const d of items) {
+    if (existSet.has(d) || seen.has(d)) { duplicates++; continue; }
+    seen.add(d);
+    unique.push(d);
+  }
 
   if (!unique.length) {
-    return res.redirect('/stock?msg=' + encodeURIComponent(`❌ সব ${lines.length} item আগে থেকেই আছে`));
+    return res.redirect('/stock?msg=' + encodeURIComponent(`❌ সব ${items.length} item আগে থেকেই আছে`));
   }
 
   const insert = db.prepare('INSERT INTO stock (category, data) VALUES (?, ?)');
-  const tx = db.transaction((items) => { for (const d of items) insert.run(category, d); });
+  const tx = db.transaction((arr) => { for (const d of arr) insert.run(category, d); });
   tx(unique);
+
   logAudit('admin', 'stock_manual', `category=${category} added=${unique.length} dup=${duplicates}`);
   res.redirect('/stock?msg=' + encodeURIComponent(
     `✅ ${unique.length} items added to ${category}` + (duplicates ? ` (${duplicates} duplicate skipped)` : '')
@@ -167,20 +198,19 @@ router.post('/clear/:category', (req, res) => {
   res.redirect('/stock?msg=' + encodeURIComponent(`Cleared ${result.changes} from ${cat}`));
 });
 
-// Download sample Excel template
-router.get('/sample/:mode', (req, res) => {
-  const mode = req.params.mode === 'multi' ? 'multi' : 'single';
+// Sample Excel template — 3-column UID/PASS/COOKIES format that matches /add command
+router.get('/sample', (req, res) => {
   const wb = XLSX.utils.book_new();
-  let data;
-  if (mode === 'single') {
-    data = [['data'], ['example_id_1@mail.com|password1'], ['example_id_2@mail.com|password2']];
-  } else {
-    data = [['category', 'data'], ['fb61', 'id1@mail.com|pass1'], ['fb1000', 'id2@mail.com|pass2']];
-  }
+  const data = [
+    ['UID', 'PASS', 'COOKIES'],
+    ['100011382171459', 'Sabbir@25', 'datr=ODPsaTn3HNRjTmauBgaPNa_-; sb=ODPsaUcA8mIaOd096mx8BtLS; c_user=100011382171459; xs=33%3A88s2rhCWKRnhLA%3A2'],
+    ['100011382171460', 'Example@99', 'datr=ABC123; sb=XYZ789; c_user=100011382171460; xs=44%3Aexample'],
+  ];
   const ws = XLSX.utils.aoa_to_sheet(data);
+  ws['!cols'] = [{ wch: 20 }, { wch: 15 }, { wch: 60 }];
   XLSX.utils.book_append_sheet(wb, ws, 'Stock');
   const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
-  res.setHeader('Content-Disposition', `attachment; filename=stock-sample-${mode}.xlsx`);
+  res.setHeader('Content-Disposition', `attachment; filename=stock-sample.xlsx`);
   res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
   res.send(buf);
 });
