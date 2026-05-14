@@ -83,22 +83,75 @@
   </div>
 
   <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
-    <div class="px-4 py-3 border-b border-slate-800 text-sm font-semibold">📥 Order History</div>
-    <table class="w-full text-xs">
-      <thead><tr><th>Category</th><th>Qty</th><th>Total</th><th>Date</th></tr></thead>
-      <tbody>
-        <% if (!sales.length) { %><tr><td colspan="4" class="text-center text-slate-500 py-4">No orders</td></tr><% } %>
-        <% sales.forEach(function(s){ %>
-          <tr>
-            <td><%= s.category %></td>
-            <td><%= s.qty %></td>
-            <td class="text-emerald-400"><%= s.total %>৳</td>
-            <td class="text-slate-400"><%= s.date %></td>
-          </tr>
-        <% }) %>
-      </tbody>
-    </table>
+    <div class="px-4 py-3 border-b border-slate-800 text-sm font-semibold flex justify-between items-center">
+      <span>📥 Purchase History (delivered IDs সহ)</span>
+      <span class="text-xs text-slate-500"><%= sales.length %> orders</span>
+    </div>
+    <div class="max-h-[500px] overflow-y-auto">
+      <% if (!sales.length) { %><div class="text-center text-slate-500 py-6 text-sm">No orders</div><% } %>
+      <% sales.forEach(function(s){ %>
+        <% var delivered = deliveredBySale[s.id] || []; %>
+        <details class="border-b border-slate-800">
+          <summary class="px-4 py-2 cursor-pointer hover:bg-slate-800/50 text-xs flex justify-between items-center">
+            <div>
+              <span class="text-cyan-400 font-semibold"><%= s.category %></span>
+              <span class="text-slate-300 mx-2">× <%= s.qty %></span>
+              <span class="text-emerald-400"><%= s.total %>৳</span>
+            </div>
+            <div class="text-slate-500">
+              <%= s.date %> <%= s.time || '' %>
+              <% if (delivered.length) { %>
+                <span class="ml-2 bg-emerald-900/40 text-emerald-300 px-1.5 py-0.5 rounded">
+                  📦 <%= delivered.length %> archived
+                </span>
+              <% } else { %>
+                <span class="ml-2 text-slate-600">no archive</span>
+              <% } %>
+            </div>
+          </summary>
+          <% if (delivered.length) { %>
+            <div class="bg-slate-950 px-3 py-2">
+              <table class="w-full text-xs font-mono">
+                <thead><tr class="text-slate-500 text-left"><th class="py-1">#</th><th>Stock ID</th><th>Source</th><th>Data (UID PASS COOKIES)</th></tr></thead>
+                <tbody>
+                  <% delivered.forEach(function(d, i){ %>
+                    <tr class="border-t border-slate-800/60">
+                      <td class="text-slate-600 py-1"><%= i+1 %></td>
+                      <td class="text-amber-400">#<%= d.stock_id || '-' %></td>
+                      <td class="text-cyan-500"><%= d.source %></td>
+                      <td class="text-slate-300 break-all"><%= (d.data||'').slice(0,160) %><%= (d.data||'').length>160?'...':'' %></td>
+                    </tr>
+                  <% }) %>
+                </tbody>
+              </table>
+            </div>
+          <% } else { %>
+            <div class="bg-slate-950 px-4 py-2 text-xs text-slate-500">
+              ⚠️ এই order এর delivered IDs archive এ নেই (পুরোনো order — archive feature এর আগে delivered)।
+            </div>
+          <% } %>
+        </details>
+      <% }) %>
+    </div>
   </div>
 </div>
+
+<% if (unlinkedDeliveries.length) { %>
+  <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden mt-6">
+    <div class="px-4 py-3 border-b border-slate-800 text-sm font-semibold">
+      📦 Unlinked Deliveries (<%= unlinkedDeliveries.length %>)
+      <span class="text-xs text-slate-500 ml-2">— archive আছে কিন্তু sale row match নাই</span>
+    </div>
+    <div class="max-h-64 overflow-y-auto">
+      <table class="w-full text-xs font-mono">
+        <thead><tr><th>Cat</th><th>Stock#</th><th>Source</th><th>Data</th></tr></thead>
+        <tbody>
+          <% unlinkedDeliveries.forEach(function(d){ %>
+            <tr><td class="text-cyan-400"><%= d.category %></td><td class="text-amber-400">#<%= d.stock_id||'-' %></td><td><%= d.source %></td><td class="text-slate-300 break-all"><%= (d.data||'').slice(0,140) %></td></tr>
+          <% }) %></tbody>
+      </table>
+    </div>
+  </div>
+<% } %>
 
 <%- include('partials/footer') %>
