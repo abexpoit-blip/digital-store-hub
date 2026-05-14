@@ -103,6 +103,45 @@
   </form>
 </div>
 
+<!-- ===== QUICK SELL / GENERATE EXCEL ===== -->
+<form method="post" action="/stock/sell"
+      class="bg-gradient-to-br from-emerald-950/40 to-slate-900 border border-emerald-800/60 p-5 rounded-xl mb-6">
+  <div class="mb-3">
+    <div class="text-sm font-semibold text-emerald-300">🛒 Quick Sell — Generate Excel & Auto-Cut Stock</div>
+    <div class="text-xs text-slate-400 mt-0.5">Category + qty দিন → N টা ID Excel আকারে download হবে এবং stock থেকে auto cut হবে।</div>
+  </div>
+  <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+    <div>
+      <label class="text-xs text-slate-400 block mb-1">Category</label>
+      <select name="category" required class="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm">
+        <option value="">— Select —</option>
+        <% allowedCategories.forEach(function(c){ %>
+          <option value="<%= c %>"><%= c %> (<%= (byCategory.find(function(x){return x.category===c})||{}).c || 0 %> available)</option>
+        <% }) %>
+      </select>
+    </div>
+    <div>
+      <label class="text-xs text-slate-400 block mb-1">Quantity</label>
+      <input type="number" name="qty" min="1" required placeholder="5"
+        class="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm"/>
+    </div>
+    <div>
+      <label class="text-xs text-slate-400 block mb-1">Buyer / Note (optional)</label>
+      <input type="text" name="buyer" placeholder="username or note"
+        class="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm"/>
+    </div>
+    <div>
+      <label class="text-xs text-slate-400 block mb-1">Price/unit ৳ (optional)</label>
+      <input type="number" name="price" min="0" step="0.01" placeholder="0"
+        class="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm"/>
+    </div>
+  </div>
+  <button class="mt-3 w-full bg-emerald-600 hover:bg-emerald-500 py-2.5 rounded text-sm font-semibold"
+          onclick="return confirm('Stock থেকে cut হবে — proceed?');">
+    ⬇ Generate Excel & Deduct Stock
+  </button>
+</form>
+
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
   <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
     <div class="px-4 py-3 border-b border-slate-800 text-sm font-semibold flex justify-between">
