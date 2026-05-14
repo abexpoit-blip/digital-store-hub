@@ -51,6 +51,24 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_delivery_sale ON delivery_archive(sale_id);
 `);
 
+// Dedupe existing pending replace_requests, then create partial unique index
+// to prevent the same user from submitting the same (category, old_data) twice while pending.
+try {
+  db.exec(`
+    DELETE FROM replace_requests
+    WHERE status='pending' AND id NOT IN (
+      SELECT MIN(id) FROM replace_requests
+      WHERE status='pending'
+      GROUP BY user_id, COALESCE(category,''), COALESCE(old_data,'')
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_replace_pending_unique
+      ON replace_requests(user_id, category, old_data)
+      WHERE status='pending';
+  `);
+} catch (e) {
+  console.warn('[db] replace dedupe/index skipped:', e.message);
+}
+
 function logAudit(actor, action, details = '') {
   db.prepare('INSERT INTO audit_log (actor, action, details, timestamp) VALUES (?, ?, ?, ?)')
     .run(actor, action, details, Date.now());

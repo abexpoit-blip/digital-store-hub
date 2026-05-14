@@ -1,30 +1,62 @@
 <%- include('partials/header', { title: 'Replace Requests', msg, currentPath }) %>
 
-<h1 class="text-2xl font-bold mb-4">🔄 Replace Requests</h1>
+<div class="flex items-center justify-between mb-4">
+  <h1 class="text-2xl font-bold">🔄 Replace Requests</h1>
+  <div class="flex gap-2">
+    <form method="post" action="/replace/bulk/dedupe" class="inline"
+          onsubmit="return confirm('Pending থেকে duplicate entries মুছে দেবে। নিশ্চিত?');">
+      <button class="bg-amber-700 hover:bg-amber-600 px-3 py-1.5 rounded text-xs">🧹 Dedupe pending</button>
+    </form>
+    <% if (status === 'collected' && rows.length) { %>
+      <form method="post" action="/replace/bulk/delete-collected" class="inline"
+            onsubmit="return confirm('সব collected entries permanently মুছে যাবে। নিশ্চিত?');">
+        <button class="bg-rose-700 hover:bg-rose-600 px-3 py-1.5 rounded text-xs">🗑️ Delete all collected</button>
+      </form>
+    <% } %>
+  </div>
+</div>
 
-<div class="flex gap-2 mb-4">
-  <a href="/replace?status=pending" class="px-4 py-2 rounded text-sm <%= status==='pending'?'bg-amber-600 text-white':'bg-slate-800 text-slate-300' %>">
-    Pending (<%= counts.pending %>)
+<div class="flex gap-2 mb-4 flex-wrap">
+  <a href="/replace?status=pending" class="px-4 py-2 rounded text-sm <%= status==='pending'?'bg-amber-600 text-white':'bg-slate-800 text-slate-300 hover:bg-slate-700' %>">
+    ⏳ Pending (<%= counts.pending %>)
   </a>
-  <a href="/replace?status=collected" class="px-4 py-2 rounded text-sm <%= status==='collected'?'bg-emerald-600 text-white':'bg-slate-800 text-slate-300' %>">
-    Collected (<%= counts.collected %>)
+  <a href="/replace?status=collected" class="px-4 py-2 rounded text-sm <%= status==='collected'?'bg-emerald-600 text-white':'bg-slate-800 text-slate-300 hover:bg-slate-700' %>">
+    ✅ Collected (<%= counts.collected %>)
   </a>
 </div>
 
+<form class="mb-4 flex gap-2">
+  <input type="hidden" name="status" value="<%= status %>"/>
+  <input name="q" value="<%= q %>" placeholder="Search by user / category / data..."
+    class="flex-1 max-w-md bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm"/>
+  <button class="bg-cyan-600 hover:bg-cyan-500 px-4 rounded text-sm">Search</button>
+  <% if (q) { %><a href="/replace?status=<%= status %>" class="px-4 py-2 text-sm text-slate-400 hover:text-white">Clear</a><% } %>
+</form>
+
 <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+  <div class="overflow-x-auto">
   <table class="w-full text-sm">
-    <thead><tr><th>ID</th><th>User</th><th>Category</th><th>Old Data</th><th>Reason</th><th>Submitted</th><th>Action</th></tr></thead>
+    <thead><tr><th>ID</th><th>User</th><th>Category</th><th>Old Data</th><th>Reason</th><th>Submitted</th><th>Collected</th><th>Action</th></tr></thead>
     <tbody>
-      <% if (!rows.length) { %><tr><td colspan="7" class="text-center text-slate-500 py-6">কোনো request নেই।</td></tr><% } %>
+      <% if (!rows.length) { %><tr><td colspan="8" class="text-center text-slate-500 py-6">কোনো request নেই।</td></tr><% } %>
       <% rows.forEach(function(r){ %>
         <tr>
           <td class="font-mono text-slate-500">#<%= r.id %></td>
-          <td><a href="/users/<%= r.user_id %>" class="text-cyan-400 hover:underline"><%= r.username || r.user_id %></a></td>
-          <td><%= r.category || '-' %></td>
-          <td class="font-mono text-xs text-slate-300 max-w-xs truncate" title="<%= r.old_data %>"><%= r.old_data || '-' %></td>
-          <td class="text-slate-400 text-xs"><%= r.reason || '-' %></td>
-          <td class="text-slate-400 text-xs"><%= new Date(r.created_at).toLocaleString('en-GB') %></td>
-          <td class="space-x-1">
+          <td>
+            <a href="/users/<%= r.user_id %>" class="text-cyan-400 hover:underline"><%= r.username || 'user' %></a>
+            <div class="text-[10px] text-slate-500 font-mono">ID: <%= r.user_id %></div>
+          </td>
+          <td><span class="bg-slate-800 px-2 py-0.5 rounded text-xs"><%= r.category || '-' %></span></td>
+          <td class="font-mono text-xs text-slate-300 max-w-md break-all">
+            <details>
+              <summary class="cursor-pointer text-slate-400"><%= (r.old_data || '-').slice(0,60) %><%= (r.old_data||'').length>60?'...':'' %></summary>
+              <div class="mt-1 p-2 bg-slate-950 rounded text-[11px]"><%= r.old_data || '-' %></div>
+            </details>
+          </td>
+          <td class="text-slate-400 text-xs max-w-xs"><%= r.reason || '-' %></td>
+          <td class="text-slate-400 text-xs whitespace-nowrap"><%= new Date(r.created_at).toLocaleString('en-GB') %></td>
+          <td class="text-slate-400 text-xs whitespace-nowrap"><%= r.collected_at ? new Date(r.collected_at).toLocaleString('en-GB') : '-' %></td>
+          <td class="space-x-1 whitespace-nowrap">
             <% if (r.status === 'pending') { %>
               <form method="post" action="/replace/<%= r.id %>/collect" class="inline">
                 <button class="bg-emerald-600 hover:bg-emerald-500 px-3 py-1 rounded text-xs">Collect</button>
@@ -39,12 +71,15 @@
       <% }) %>
     </tbody>
   </table>
+  </div>
 </div>
 
-<div class="mt-6 bg-slate-900/60 border border-slate-800 rounded-xl p-4 text-xs text-slate-400">
-  <div class="font-semibold text-slate-300 mb-1">কীভাবে কাজ করে:</div>
-  User bot এ replace command পাঠালে data এখানে এসে save হবে। আপনি data নিয়ে নিলে <b>Collect</b> চাপুন (history থাকবে),
-  বা পুরোপুরি মুছে দিতে <b>Delete</b> চাপুন।
+<div class="mt-6 bg-slate-900/60 border border-slate-800 rounded-xl p-4 text-xs text-slate-400 space-y-2">
+  <div class="font-semibold text-slate-300">কীভাবে কাজ করে:</div>
+  <div>• User bot এ replace command পাঠালে data এখানে save হবে।</div>
+  <div>• <b class="text-emerald-400">Collect</b> = data নিয়ে নিয়েছেন (history তে থাকবে)। <b class="text-rose-400">Delete</b> = পুরোপুরি মুছে দেবে।</div>
+  <div>• <b class="text-amber-400">Duplicate prevention:</b> একই user একই (category + old_data) দিয়ে দ্বিতীয়বার pending submit করতে পারবে না — DB index level এ block হবে।</div>
+  <div>• পুরোনো duplicate থাকলে <b>🧹 Dedupe pending</b> বাটন চাপুন (oldest টা থাকবে, বাকিগুলো মুছবে)।</div>
 </div>
 
 <%- include('partials/footer') %>
