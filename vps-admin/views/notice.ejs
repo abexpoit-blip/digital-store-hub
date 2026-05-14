@@ -1,0 +1,58 @@
+<%- include('partials/header', { title: 'Send Notice', msg, currentPath }) %>
+
+<h1 class="text-2xl font-bold mb-2">📢 Send Notice</h1>
+<p class="text-sm text-slate-400 mb-6">সব user বা একজন নির্দিষ্ট user কে Telegram এ message পাঠান।</p>
+
+<% if (!botTokenSet) { %>
+  <div class="bg-rose-900/40 border border-rose-700 text-rose-200 p-4 rounded-xl mb-6 text-sm">
+    ⚠️ <b>BOT_TOKEN missing!</b> <code>vps-admin/.env</code> এ যোগ করুন:
+    <pre class="mt-2 bg-slate-950 p-2 rounded text-xs">BOT_TOKEN=8364765061:AAEoT6w2l74JDowWUns2EC5OT8wEcIji9Y4</pre>
+    তারপর <code>pm2 restart nexusx-admin --update-env</code>
+  </div>
+<% } %>
+
+<form method="post" action="/notice/send" class="bg-slate-900 border border-slate-800 p-5 rounded-xl space-y-4 max-w-2xl">
+  <div>
+    <label class="text-sm font-semibold block mb-2">কাকে পাঠাবেন?</label>
+    <div class="flex gap-3 items-center">
+      <label class="flex items-center gap-2 text-sm">
+        <input type="radio" name="target" value="all" checked onchange="document.getElementById('uid').disabled=true">
+        🌍 সব active user (<%= totalUsers %> জন)
+      </label>
+      <label class="flex items-center gap-2 text-sm ml-4">
+        <input type="radio" name="target" value="single" onchange="document.getElementById('uid').disabled=false">
+        👤 একজন
+      </label>
+      <input id="uid" name="single_id" disabled placeholder="user_id"
+             class="bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-sm font-mono w-40"/>
+    </div>
+    <p class="text-xs text-slate-500 mt-2">"একজন" select করলে user_id "Target" hidden field এ যাবে — নিচের target field manually update করুন বা শুধু broadcast করুন।</p>
+  </div>
+
+  <div>
+    <label class="text-sm font-semibold block mb-2">Message (HTML allowed: &lt;b&gt; &lt;i&gt; &lt;a href&gt; &lt;code&gt;)</label>
+    <textarea name="text" rows="8" required placeholder="🎉 নতুন stock এসেছে! এখনই কিনুন..."
+      class="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm font-mono"></textarea>
+  </div>
+
+  <div class="flex gap-3">
+    <button class="bg-cyan-600 hover:bg-cyan-500 px-5 py-2 rounded text-sm font-semibold">📤 Send</button>
+    <a href="/" class="px-4 py-2 text-sm text-slate-400 hover:text-white">Cancel</a>
+  </div>
+</form>
+
+<script>
+// When "single" selected, copy uid into hidden target on submit
+document.querySelector('form').addEventListener('submit', function(e){
+  const radios = document.querySelectorAll('input[name="target"]');
+  const sel = Array.from(radios).find(r => r.checked).value;
+  if (sel === 'single') {
+    const uid = document.getElementById('uid').value.trim();
+    if (!uid) { e.preventDefault(); alert('user_id দিন'); return; }
+    // replace target value with the actual uid
+    Array.from(radios).find(r => r.value === 'single').value = uid;
+  }
+});
+</script>
+
+<%- include('partials/footer') %>
