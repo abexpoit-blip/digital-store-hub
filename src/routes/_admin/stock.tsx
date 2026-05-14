@@ -66,8 +66,8 @@ function StockPage() {
           </div>
           <div className="mt-4 space-y-2">
             {stockItems.filter(s => s.available < 10).map((s) => (
-              <div key={s.product} className="rounded-lg border border-warning/20 bg-warning/5 p-3">
-                <div className="text-sm font-medium">{s.product}</div>
+              <div key={s.key} className="rounded-lg border border-warning/20 bg-warning/5 p-3">
+                <div className="text-sm font-medium">{s.icon} {s.product}</div>
                 <div className="mt-1 flex items-center justify-between text-xs">
                   <span className="text-warning">Only {s.available} left</span>
                   <span className="text-muted-foreground">৳{s.price}</span>
@@ -82,14 +82,15 @@ function StockPage() {
         <div className="flex items-center justify-between border-b border-white/5 px-5 py-4">
           <div className="flex items-center gap-2">
             <Package className="h-4 w-4" />
-            <h3 className="font-semibold">Current inventory</h3>
+            <h3 className="font-semibold">Bot Stock Categories</h3>
           </div>
-          <span className="text-xs text-muted-foreground">{stockItems.length} products</span>
+          <span className="text-xs text-muted-foreground">{stockItems.length} categories · live from store.db</span>
         </div>
         <table className="w-full">
           <thead className="bg-white/[0.02] text-left text-xs uppercase tracking-wider text-muted-foreground">
             <tr>
-              <th className="px-5 py-3">Product</th>
+              <th className="px-5 py-3">Category</th>
+              <th className="px-5 py-3">DB Key</th>
               <th className="px-5 py-3">Available</th>
               <th className="px-5 py-3">Sold</th>
               <th className="px-5 py-3">Price</th>
@@ -99,10 +100,13 @@ function StockPage() {
           <tbody>
             {stockItems.map((s) => {
               const total = s.available + s.sold;
-              const pct = (s.sold / total) * 100;
+              const pct = total > 0 ? (s.sold / total) * 100 : 0;
               return (
-                <tr key={s.product} className="border-t border-white/5 hover:bg-white/[0.03]">
-                  <td className="px-5 py-4 font-medium">{s.product}</td>
+                <tr key={s.key} className="border-t border-white/5 hover:bg-white/[0.03]">
+                  <td className="px-5 py-4 font-medium">{s.icon} {s.product}</td>
+                  <td className="px-5 py-4">
+                    <code className="rounded bg-white/5 px-2 py-0.5 text-xs text-primary">{s.key}</code>
+                  </td>
                   <td className="px-5 py-4">
                     <span className={s.available < 10 ? "font-bold text-warning" : ""}>{s.available}</span>
                   </td>
