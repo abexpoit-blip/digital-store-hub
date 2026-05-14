@@ -1,17 +1,30 @@
 <%- include('partials/header', { title: 'Stock', msg, currentPath }) %>
 
 <h1 class="text-2xl font-bold mb-1">📦 Stock Management</h1>
-<p class="text-slate-400 text-sm mb-5">Bot এর existing categories এর সাথে match করিয়ে stock upload করুন।</p>
+<p class="text-slate-400 text-sm mb-2">Bot এর <code class="bg-slate-800 px-1.5 py-0.5 rounded">/add</code> command এর সাথে 100% match — শুধু allowed categories ব্যবহার হবে।</p>
+
+<!-- Allowed categories info -->
+<div class="bg-cyan-950/40 border border-cyan-800/50 rounded-lg p-3 mb-5 text-xs">
+  <div class="text-cyan-300 font-semibold mb-1">✅ Allowed Categories (bot recognize করে):</div>
+  <div class="flex gap-2 flex-wrap">
+    <% allowedCategories.forEach(function(c){ %>
+      <span class="bg-cyan-900/60 border border-cyan-700 text-cyan-200 px-2 py-0.5 rounded font-mono"><%= c %></span>
+    <% }) %>
+  </div>
+  <div class="text-slate-400 mt-2">
+    📝 Format: <code class="bg-slate-800 px-1 rounded">UID PASS COOKIES</code> (space-separated)
+    &nbsp;•&nbsp; Multi-upload separator: <code class="bg-slate-800 px-1 rounded">###</code>
+  </div>
+</div>
 
 <% if (preview && preview.length) { %>
   <div class="bg-amber-900/20 border border-amber-700/50 rounded-xl p-5 mb-6">
     <div class="text-sm font-semibold text-amber-200 mb-2">
-      ⚠ Preview — <%= previewCount %> unique items ready to insert
+      ⚠ Preview — <%= previewCount %> unique items ready
       <% if (typeof duplicates !== 'undefined' && duplicates > 0) { %>
         <span class="text-rose-300">(<%= duplicates %> duplicate skipped)</span>
       <% } %>
     </div>
-    <!-- Per-category breakdown -->
     <div class="flex flex-wrap gap-2 mb-3">
       <% Object.keys(previewByCat).forEach(function(cat){ %>
         <span class="bg-slate-800 border border-slate-700 px-2 py-1 rounded text-xs">
@@ -22,10 +35,10 @@
     </div>
     <div class="max-h-64 overflow-y-auto bg-slate-950 rounded p-2 mb-3">
       <table class="w-full text-xs">
-        <thead><tr><th>#</th><th>Category</th><th>Data</th></tr></thead>
+        <thead><tr><th>#</th><th>Category</th><th>Data (UID PASS COOKIES)</th></tr></thead>
         <tbody>
           <% preview.forEach(function(p, i){ %>
-            <tr><td class="text-slate-500"><%= i+1 %></td><td class="text-cyan-400"><%= p.category %></td><td class="font-mono text-slate-300"><%= p.data.length>80 ? p.data.slice(0,80)+'...' : p.data %></td></tr>
+            <tr><td class="text-slate-500"><%= i+1 %></td><td class="text-cyan-400"><%= p.category %></td><td class="font-mono text-slate-300"><%= p.data.length>100 ? p.data.slice(0,100)+'...' : p.data %></td></tr>
           <% }) %>
         </tbody>
       </table>
@@ -38,72 +51,55 @@
 <% } %>
 
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-  <!-- BULK EXCEL UPLOAD -->
+  <!-- EXCEL UPLOAD -->
   <form method="post" action="/stock/upload" enctype="multipart/form-data"
         class="bg-slate-900 border border-slate-800 p-5 rounded-xl">
     <div class="flex items-center justify-between mb-3">
       <div class="text-sm font-semibold">📤 Excel Upload</div>
-      <div class="flex gap-2 text-xs">
-        <a href="/stock/sample/single" class="text-cyan-400 hover:underline">⬇ Single sample</a>
-        <a href="/stock/sample/multi" class="text-cyan-400 hover:underline">⬇ Multi sample</a>
-      </div>
+      <a href="/stock/sample" class="text-xs text-cyan-400 hover:underline">⬇ Download sample</a>
     </div>
 
-    <!-- Mode toggle -->
-    <div class="bg-slate-950 border border-slate-800 rounded p-3 mb-3">
-      <label class="flex items-start gap-2 mb-2 cursor-pointer">
-        <input type="radio" name="mode" value="single" checked onchange="toggleMode(this.value)" class="mt-1"/>
-        <div>
-          <div class="text-sm font-medium">🎯 Single Category Mode <span class="text-xs text-slate-400">(recommended)</span></div>
-          <div class="text-xs text-slate-500">Excel এ শুধু <code class="bg-slate-800 px-1 rounded">data</code> column। নিচে category select করুন → সব row সেই category তে যাবে।</div>
-        </div>
-      </label>
-      <label class="flex items-start gap-2 cursor-pointer">
-        <input type="radio" name="mode" value="multi" onchange="toggleMode(this.value)" class="mt-1"/>
-        <div>
-          <div class="text-sm font-medium">🗂️ Multi Category Mode</div>
-          <div class="text-xs text-slate-500">Excel এ <code class="bg-slate-800 px-1 rounded">category</code> + <code class="bg-slate-800 px-1 rounded">data</code> দুটো column।</div>
-        </div>
-      </label>
-    </div>
+    <p class="text-xs text-slate-400 mb-3">
+      Excel format: <strong>3 columns</strong> — <code class="bg-slate-800 px-1 rounded">UID</code> |
+      <code class="bg-slate-800 px-1 rounded">PASS</code> | <code class="bg-slate-800 px-1 rounded">COOKIES</code>।
+      প্রতি row = একটা stock item। Header row optional।
+    </p>
 
-    <!-- Category picker (only for single mode) -->
-    <div id="single-cat-block">
-      <label class="text-xs text-slate-400 block mb-1">Bot Category (existing):</label>
-      <select name="category" class="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm mb-2">
-        <option value="">— Select existing category —</option>
-        <% categories.forEach(function(c){ %>
-          <option value="<%= c %>"><%= c %></option>
-        <% }) %>
-      </select>
-      <label class="text-xs text-slate-400 block mb-1">OR new category name:</label>
-      <input name="new_category" placeholder="নতুন category (যেমন: fb_premium)"
-        class="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm mb-3"/>
-    </div>
+    <label class="text-xs text-slate-400 block mb-1">Category:</label>
+    <select name="category" required class="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm mb-3">
+      <option value="">— Select category —</option>
+      <% allowedCategories.forEach(function(c){ %>
+        <option value="<%= c %>"><%= c %></option>
+      <% }) %>
+    </select>
 
     <input type="file" name="file" accept=".xlsx,.xls" required
       class="w-full text-sm text-slate-300 file:mr-3 file:bg-cyan-600 file:text-white file:border-0 file:px-3 file:py-1.5 file:rounded mb-3"/>
     <button class="w-full bg-cyan-600 hover:bg-cyan-500 py-2 rounded text-sm font-semibold">Upload & Preview</button>
   </form>
 
-  <!-- MANUAL ADD -->
+  <!-- MANUAL TEXTAREA -->
   <form method="post" action="/stock/manual"
         class="bg-slate-900 border border-slate-800 p-5 rounded-xl">
-    <div class="text-sm font-semibold mb-3">✍ Manual Add</div>
+    <div class="text-sm font-semibold mb-3">✍ Manual Add (newline বা <code class="bg-slate-800 px-1 rounded">###</code> separator)</div>
 
     <label class="text-xs text-slate-400 block mb-1">Category:</label>
-    <select name="category" class="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm mb-2">
-      <option value="">— Select existing —</option>
-      <% categories.forEach(function(c){ %>
+    <select name="category" required class="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm mb-3">
+      <option value="">— Select category —</option>
+      <% allowedCategories.forEach(function(c){ %>
         <option value="<%= c %>"><%= c %></option>
       <% }) %>
     </select>
-    <input name="new_category" placeholder="OR new category name"
-      class="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm mb-2"/>
 
-    <textarea name="data" required rows="6" placeholder="প্রতি লাইনে একটা data&#10;example1@mail.com|pass1&#10;example2@mail.com|pass2"
-      class="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm font-mono mb-3"></textarea>
-    <button class="w-full bg-cyan-600 hover:bg-cyan-500 py-2 rounded text-sm font-semibold">Add</button>
+    <textarea name="data" required rows="8"
+      placeholder="100011382171459 Sabbir@25 datr=ODPsaT...; c_user=100011382171459; xs=33%3A...&#10;100011382171460 OtherPass cookies-here..."
+      class="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-xs font-mono mb-3"></textarea>
+
+    <div class="text-xs text-slate-500 mb-3">
+      💡 প্রতি লাইনে: <code class="bg-slate-800 px-1 rounded">UID PASS COOKIES</code> (space-separated)।
+      একসাথে অনেক item হলে <code class="bg-slate-800 px-1 rounded">###</code> দিয়ে separate করুন।
+    </div>
+    <button class="w-full bg-cyan-600 hover:bg-cyan-500 py-2 rounded text-sm font-semibold">Add Stock</button>
   </form>
 </div>
 
@@ -116,16 +112,20 @@
     <table class="w-full text-sm">
       <thead><tr><th>Category</th><th>Count</th><th></th></tr></thead>
       <tbody>
-        <% if (!byCategory.length) { %><tr><td colspan="3" class="text-center text-slate-500 py-4">Empty</td></tr><% } %>
         <% byCategory.forEach(function(c){ %>
           <tr>
-            <td class="font-semibold text-cyan-400"><%= c.category %></td>
+            <td class="font-semibold <%= c.unknown ? 'text-amber-400' : 'text-cyan-400' %>">
+              <%= c.category %>
+              <% if (c.unknown) { %><span class="text-xs ml-1" title="Bot এ unknown category">⚠️</span><% } %>
+            </td>
             <td class="font-mono <%= c.c < 5 ? 'text-rose-400' : 'text-emerald-400' %>"><%= c.c %></td>
             <td>
-              <form method="post" action="/stock/clear/<%= encodeURIComponent(c.category) %>"
-                onsubmit="return confirm('Sure delete all <%= c.c %> items from <%= c.category %>?');">
-                <button class="text-xs text-rose-400 hover:text-rose-300">Clear all</button>
-              </form>
+              <% if (c.c > 0) { %>
+                <form method="post" action="/stock/clear/<%= encodeURIComponent(c.category) %>"
+                  onsubmit="return confirm('Sure delete all <%= c.c %> items from <%= c.category %>?');">
+                  <button class="text-xs text-rose-400 hover:text-rose-300">Clear all</button>
+                </form>
+              <% } %>
             </td>
           </tr>
         <% }) %>
@@ -147,11 +147,5 @@
     </div>
   </div>
 </div>
-
-<script>
-  function toggleMode(mode) {
-    document.getElementById('single-cat-block').style.display = (mode === 'single') ? '' : 'none';
-  }
-</script>
 
 <%- include('partials/footer') %>
