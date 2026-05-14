@@ -109,6 +109,12 @@
               <% } %>
             </div>
           </summary>
+          <div class="bg-slate-950 px-3 py-2 text-[11px] font-mono flex items-center gap-2">
+            <span class="text-slate-500">🔗 Buyer download link:</span>
+            <input readonly value="<%= s._download %>" onclick="this.select()"
+                   class="flex-1 bg-slate-900 border border-slate-800 rounded px-2 py-1 text-cyan-300"/>
+            <a href="<%= s._download %>" target="_blank" class="bg-cyan-700 hover:bg-cyan-600 px-2 py-1 rounded text-white">Open</a>
+          </div>
           <% if (delivered.length) { %>
             <div class="bg-slate-950 px-3 py-2">
               <table class="w-full text-xs font-mono">
@@ -153,5 +159,17 @@
     </div>
   </div>
 <% } %>
+
+<form method="post" action="/users/<%= user.user_id %>/delete"
+      onsubmit="return confirm('⚠️ এই user এবং তার সব sales/deposits/archive permanently মুছে যাবে। নিশ্চিত?');"
+      class="bg-rose-950/30 border border-rose-900 p-5 rounded-xl mt-8">
+  <div class="text-sm font-semibold text-rose-300 mb-2">🗑️ Delete User Permanently</div>
+  <p class="text-xs text-slate-400 mb-3">User এবং তার সব data (sales, deposits, delivery archive, replace requests) মুছে যাবে। Confirm এ user_id (<code><%= user.user_id %></code>) লিখুন।</p>
+  <div class="flex gap-2">
+    <input name="confirm" placeholder="<%= user.user_id %>" required
+           class="bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm font-mono w-48"/>
+    <button class="bg-rose-700 hover:bg-rose-600 px-4 py-2 rounded text-sm font-semibold text-white">Delete Forever</button>
+  </div>
+</form>
 
 <%- include('partials/footer') %>
