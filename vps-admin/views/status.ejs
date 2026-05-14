@@ -1,0 +1,104 @@
+<%- include('partials/header', { title: 'System Status' }) %>
+
+<div class="flex items-center justify-between mb-6">
+  <div>
+    <h1 class="text-2xl font-bold">⚙️ System Status</h1>
+    <p class="text-slate-400 text-sm">PM2, Deploy log, Error logs — সব এক জায়গায়</p>
+  </div>
+  <div class="flex gap-2">
+    <form method="post" action="/status/restart" onsubmit="return confirm('PM2 restart করবেন?')">
+      <button class="px-4 py-2 bg-amber-600 hover:bg-amber-500 rounded-md text-sm font-medium">🔄 Restart App</button>
+    </form>
+    <form method="post" action="/status/deploy" onsubmit="return confirm('Manual deploy চালু করবেন? (git pull + npm install + restart)')">
+      <button class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-md text-sm font-medium">🚀 Deploy Now</button>
+    </form>
+    <a href="/status" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-md text-sm">↻ Refresh</a>
+  </div>
+</div>
+
+<!-- PM2 Status Cards -->
+<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+  <% if (pm2App && pm2App.pm2_env) { %>
+    <% const e = pm2App.pm2_env; %>
+    <div class="bg-slate-900 border border-slate-800 rounded-lg p-4">
+      <div class="text-xs text-slate-400 uppercase">Status</div>
+      <div class="text-xl font-bold mt-1 <%= e.status === 'online' ? 'text-emerald-400' : 'text-rose-400' %>">
+        <%= e.status === 'online' ? '🟢' : '🔴' %> <%= e.status %>
+      </div>
+    </div>
+    <div class="bg-slate-900 border border-slate-800 rounded-lg p-4">
+      <div class="text-xs text-slate-400 uppercase">Uptime</div>
+      <div class="text-xl font-bold mt-1 text-cyan-400">
+        <% const up = e.pm_uptime ? Math.floor((Date.now() - e.pm_uptime) / 1000) : 0;
+           const h = Math.floor(up/3600), m = Math.floor((up%3600)/60); %>
+        <%= h %>h <%= m %>m
+      </div>
+    </div>
+    <div class="bg-slate-900 border border-slate-800 rounded-lg p-4">
+      <div class="text-xs text-slate-400 uppercase">Restarts</div>
+      <div class="text-xl font-bold mt-1"><%= e.restart_time || 0 %></div>
+    </div>
+    <div class="bg-slate-900 border border-slate-800 rounded-lg p-4">
+      <div class="text-xs text-slate-400 uppercase">Memory</div>
+      <div class="text-xl font-bold mt-1">
+        <%= pm2App.monit ? (pm2App.monit.memory / 1024 / 1024).toFixed(1) : 0 %> MB
+      </div>
+    </div>
+  <% } else { %>
+    <div class="col-span-4 bg-rose-900/30 border border-rose-700 text-rose-200 rounded-lg p-4">
+      ⚠️ PM2 process পাওয়া যায়নি। Server এ <code class="bg-slate-800 px-2 py-0.5 rounded">pm2 list</code> চেক করুন।
+    </div>
+  <% } %>
+</div>
+
+<!-- System Info -->
+<div class="grid md:grid-cols-2 gap-4 mb-6">
+  <div class="bg-slate-900 border border-slate-800 rounded-lg p-4">
+    <div class="text-sm font-semibold text-cyan-400 mb-2">🖥️ Server Uptime</div>
+    <pre class="text-xs text-slate-300 whitespace-pre-wrap"><%= uptime %></pre>
+  </div>
+  <div class="bg-slate-900 border border-slate-800 rounded-lg p-4">
+    <div class="text-sm font-semibold text-cyan-400 mb-2">💾 Database File</div>
+    <pre class="text-xs text-slate-300 whitespace-pre-wrap"><%= dbStat %></pre>
+  </div>
+</div>
+
+<!-- Recent Git Commits -->
+<div class="bg-slate-900 border border-slate-800 rounded-lg p-4 mb-6">
+  <div class="text-sm font-semibold text-cyan-400 mb-2">📦 Recent Deploys (Git Log)</div>
+  <pre class="text-xs text-slate-300 whitespace-pre-wrap font-mono"><%= gitLog || 'No git history' %></pre>
+</div>
+
+<!-- Deploy Log -->
+<div class="bg-slate-900 border border-slate-800 rounded-lg p-4 mb-6">
+  <div class="flex items-center justify-between mb-2">
+    <div class="text-sm font-semibold text-cyan-400">🚀 Deploy Log (last 60 lines)</div>
+    <% if (deployLog.mtime) { %>
+      <div class="text-xs text-slate-500">Last update: <%= new Date(deployLog.mtime).toLocaleString() %></div>
+    <% } %>
+  </div>
+  <% if (!deployLog.exists) { %>
+    <div class="text-xs text-slate-500">⚠️ Deploy log file পাওয়া যায়নি (/root/deploy.log)। Webhook setup এর পর তৈরি হবে।</div>
+  <% } else { %>
+    <pre class="text-xs text-slate-300 whitespace-pre-wrap font-mono max-h-80 overflow-y-auto bg-slate-950 p-3 rounded"><%= deployLog.content || '(empty)' %></pre>
+  <% } %>
+</div>
+
+<!-- Error Log -->
+<div class="bg-slate-900 border border-rose-900/50 rounded-lg p-4 mb-6">
+  <div class="text-sm font-semibold text-rose-400 mb-2">❌ Error Log (PM2 stderr — last 50 lines)</div>
+  <pre class="text-xs text-rose-200 whitespace-pre-wrap font-mono max-h-80 overflow-y-auto bg-slate-950 p-3 rounded"><%= errorLog || '(no errors)' %></pre>
+</div>
+
+<!-- Output Log -->
+<div class="bg-slate-900 border border-slate-800 rounded-lg p-4 mb-6">
+  <div class="text-sm font-semibold text-cyan-400 mb-2">📝 Output Log (PM2 stdout — last 30 lines)</div>
+  <pre class="text-xs text-slate-300 whitespace-pre-wrap font-mono max-h-64 overflow-y-auto bg-slate-950 p-3 rounded"><%= outLog || '(empty)' %></pre>
+</div>
+
+<script>
+  // Auto refresh every 15s
+  setTimeout(() => { if (!document.hidden) location.reload(); }, 15000);
+</script>
+
+<%- include('partials/footer') %>
