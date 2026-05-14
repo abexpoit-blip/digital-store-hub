@@ -26,6 +26,21 @@ router.get('/:id', (req, res) => {
   const deposits = db.prepare(
     'SELECT * FROM payment_logs WHERE user_id = ? ORDER BY COALESCE(timestamp,0) DESC LIMIT 100'
   ).all(userId);
+
+  // Delivered IDs per sale (archive) — shows exactly what each user received and from which stock row
+  const deliveredBySale = {};
+  const unlinkedDeliveries = [];
+  try {
+    const allDeliveries = db.prepare(
+      `SELECT id, sale_id, category, stock_id, data, source, delivered_at
+       FROM delivery_archive WHERE user_id = ? ORDER BY id DESC LIMIT 500`
+    ).all(userId);
+    allDeliveries.forEach(d => {
+      if (d.sale_id) (deliveredBySale[d.sale_id] = deliveredBySale[d.sale_id] || []).push(d);
+      else unlinkedDeliveries.push(d);
+    });
+  } catch (e) { /* table missing on first run */ }
+
   const totalSpent = sales.reduce((a, b) => a + (b.total || 0), 0);
   const totalDeposited = deposits
     .filter(d => d.status === 'approved')
@@ -33,6 +48,7 @@ router.get('/:id', (req, res) => {
 
   res.render('user-detail', {
     user, sales, deposits, totalSpent, totalDeposited,
+    deliveredBySale, unlinkedDeliveries,
     msg: req.query.msg || null
   });
 });
