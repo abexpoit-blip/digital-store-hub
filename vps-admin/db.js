@@ -35,6 +35,20 @@ db.exec(`
     password_hash TEXT NOT NULL,
     updated_at INTEGER NOT NULL
   );
+
+  CREATE TABLE IF NOT EXISTS delivery_archive (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    sale_id INTEGER,
+    user_id INTEGER NOT NULL,
+    username TEXT,
+    category TEXT NOT NULL,
+    stock_id INTEGER,
+    data TEXT NOT NULL,
+    source TEXT DEFAULT 'bot',
+    delivered_at INTEGER NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_delivery_user ON delivery_archive(user_id);
+  CREATE INDEX IF NOT EXISTS idx_delivery_sale ON delivery_archive(sale_id);
 `);
 
 function logAudit(actor, action, details = '') {
