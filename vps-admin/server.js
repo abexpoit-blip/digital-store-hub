@@ -67,6 +67,7 @@ app.use('/stock', requireLogin, require('./routes/stock'));
 app.use('/replace', requireLogin, require('./routes/replace'));
 app.use('/orders', requireLogin, require('./routes/orders'));
 app.use('/audit', requireLogin, require('./routes/audit'));
+app.use('/status', requireLogin, require('./routes/status'));
 
 // 404
 app.use((req, res) => res.status(404).render('error', { message: 'Page not found' }));
