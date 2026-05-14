@@ -59,8 +59,12 @@ app.post('/change-password', requireLogin, (req, res) => {
   res.redirect('/?msg=' + encodeURIComponent('Password পরিবর্তন হয়েছে ✅'));
 });
 
+// --- PUBLIC ROUTES (no auth) — buyer Excel download via signed link ---
+app.use('/o', require('./routes/public'));
+
 // --- FEATURE ROUTES (all protected) ---
 app.use('/', requireLogin, require('./routes/dashboard'));
+app.use('/notice', requireLogin, require('./routes/notice'));
 app.use('/users', requireLogin, require('./routes/users'));
 app.use('/deposits', requireLogin, require('./routes/deposits'));
 app.use('/stock', requireLogin, require('./routes/stock'));
