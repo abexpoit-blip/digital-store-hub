@@ -198,6 +198,78 @@ router.post('/clear/:category', (req, res) => {
   res.redirect('/stock?msg=' + encodeURIComponent(`Cleared ${result.changes} from ${cat}`));
 });
 
+// ===== QUICK SELL / DELIVER =====
+// Admin selects category + qty → system pulls N items, deletes from stock,
+// logs sale, and returns Excel file containing those N IDs (UID/PASS/COOKIES).
+router.post('/sell', (req, res) => {
+  const category = (req.body.category || '').trim();
+  const qty = Math.max(1, parseInt(req.body.qty, 10) || 0);
+  const buyer = (req.body.buyer || '').trim() || 'manual-admin';
+  const price = parseFloat(req.body.price) || 0;
+
+  if (!ALLOWED_CATEGORIES.includes(category)) {
+    return res.redirect('/stock?msg=' + encodeURIComponent(
+      `❌ Invalid category. Allowed: ${ALLOWED_CATEGORIES.join(', ')}`
+    ));
+  }
+
+  // Pull N rows + delete in one transaction (race-safe)
+  let rows;
+  try {
+    rows = db.transaction(() => {
+      const picked = db.prepare(
+        'SELECT id, data FROM stock WHERE category = ? ORDER BY id ASC LIMIT ?'
+      ).all(category, qty);
+      if (picked.length < qty) {
+        const e = new Error(`Insufficient stock — ${category} এ মাত্র ${picked.length} টা আছে, চাওয়া হয়েছে ${qty}`);
+        e.code = 'NO_STOCK';
+        throw e;
+      }
+      const del = db.prepare('DELETE FROM stock WHERE id = ?');
+      for (const r of picked) del.run(r.id);
+      return picked;
+    })();
+  } catch (e) {
+    return res.redirect('/stock?msg=' + encodeURIComponent('❌ ' + e.message));
+  }
+
+  // Log to sales table if it exists (bot's table). Best-effort — don't fail download if schema differs.
+  try {
+    const now = new Date();
+    const date = now.toISOString().slice(0, 10);
+    const time = now.toTimeString().slice(0, 8);
+    db.prepare(
+      `INSERT INTO sales (user_id, username, category, qty, total, date, time)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`
+    ).run(0, buyer, category, rows.length, price * rows.length, date, time);
+  } catch (e) { /* schema mismatch — skip */ }
+
+  logAudit('admin', 'stock_sell', `category=${category} qty=${rows.length} buyer=${buyer}`);
+
+  // Build Excel — split each "UID PASS COOKIES" back into 3 columns
+  const header = ['#', 'UID', 'PASS', 'COOKIES'];
+  const data = [header];
+  rows.forEach((r, i) => {
+    const parts = (r.data || '').split(/\s+/);
+    const uid = parts[0] || '';
+    const pass = parts[1] || '';
+    const cookies = parts.slice(2).join(' ');
+    data.push([i + 1, uid, pass, cookies]);
+  });
+
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(data);
+  ws['!cols'] = [{ wch: 4 }, { wch: 20 }, { wch: 18 }, { wch: 80 }];
+  XLSX.utils.book_append_sheet(wb, ws, category);
+  const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+
+  const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+  res.setHeader('Content-Disposition',
+    `attachment; filename="${category}-${rows.length}items-${buyer}-${stamp}.xlsx"`);
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.send(buf);
+});
+
 // Sample Excel template — 3-column UID/PASS/COOKIES format that matches /add command
 router.get('/sample', (req, res) => {
   const wb = XLSX.utils.book_new();
