@@ -173,11 +173,14 @@ def main():
     if "create_zinipay_invoice" in src:
         die("Already patched! আবার patch করার দরকার নাই।")
 
-    # 3. Add helper after `import os`
-    if "\nimport os\n" not in src:
-        die("'import os' line পাওয়া যায়নি — manual check দরকার")
-    src = src.replace("\nimport os\n", "\nimport os\n" + NEW_HELPER, 1)
-    print("✅ Helper function add হয়েছে")
+    # 3. Add helper after last `import` line (flexible matching)
+    import_lines = [m for m in re.finditer(r'^(?:import |from )\S.*$', src, re.MULTILINE)]
+    if not import_lines:
+        die("Kono import line pawa jayni — manual check dorkar")
+    last_import = import_lines[-1]
+    insert_pos = last_import.end()
+    src = src[:insert_pos] + "\n" + NEW_HELPER + src[insert_pos:]
+    print("✅ Helper function add hoyechhe (after last import)")
 
     # 4. Replace dep_start function
     pat_start = re.compile(
