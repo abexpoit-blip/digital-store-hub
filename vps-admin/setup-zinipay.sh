@@ -154,13 +154,49 @@ python3 apply-zinipay-patch.py || {
   echo -e "${YELLOW}⚠ Patch already applied বা manual check দরকার। চলতে থাকছি...${NC}"
 }
 
-# ---------- STEP 9: PM2 restart ----------
-echo -e "${GREEN}→ Services restart করা হচ্ছে...${NC}"
-cd "$VPS_ADMIN_DIR"
-pm2 restart vps-admin --update-env 2>/dev/null || pm2 start server.js --name vps-admin --update-env
+# ---------- STEP 9: PM2 restart (existing process names auto-detect) ----------
+echo -e "${GREEN}→ Services restart kora hocche...${NC}"
 
-cd "$BOT_DIR"
-pm2 restart bot --update-env 2>/dev/null || pm2 start store.py --name bot --interpreter python3 --update-env
+# admin service name detect (vps-admin / nexusx-admin)
+ADMIN_NAME=$(pm2 jlist 2>/dev/null | python3 -c "
+import sys, json
+try:
+    procs = json.load(sys.stdin)
+    for p in procs:
+        script = p.get('pm2_env', {}).get('pm_exec_path', '')
+        if 'vps-admin/server.js' in script:
+            print(p['name']); break
+except: pass
+" 2>/dev/null)
+
+BOT_NAME=$(pm2 jlist 2>/dev/null | python3 -c "
+import sys, json
+try:
+    procs = json.load(sys.stdin)
+    for p in procs:
+        script = p.get('pm2_env', {}).get('pm_exec_path', '')
+        if script.endswith('/store.py') and 'landscape' not in script:
+            print(p['name']); break
+except: pass
+" 2>/dev/null)
+
+if [ -n "$ADMIN_NAME" ]; then
+  echo -e "${GREEN}✓ Admin service found: $ADMIN_NAME${NC}"
+  pm2 restart "$ADMIN_NAME" --update-env
+else
+  echo -e "${YELLOW}⚠ Admin service nai, notun create kori...${NC}"
+  cd "$VPS_ADMIN_DIR"
+  pm2 start server.js --name vps-admin --update-env
+fi
+
+if [ -n "$BOT_NAME" ]; then
+  echo -e "${GREEN}✓ Bot service found: $BOT_NAME${NC}"
+  pm2 restart "$BOT_NAME" --update-env
+else
+  echo -e "${YELLOW}⚠ Bot service nai, notun create kori...${NC}"
+  cd "$BOT_DIR"
+  pm2 start store.py --name bot --interpreter python3 --update-env
+fi
 
 pm2 save
 
