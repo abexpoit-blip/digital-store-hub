@@ -37,8 +37,22 @@ if [ ! -f "$VPS_ADMIN_DIR/server.js" ]; then
 fi
 echo -e "${GREEN}✓ vps-admin path: $VPS_ADMIN_DIR${NC}"
 
-# ---------- STEP 2: store.py খোঁজা ----------
-STORE_PY=$(find / -name "store.py" -not -path "*/node_modules/*" -not -path "*/.local/*" 2>/dev/null | head -1)
+# ---------- STEP 2: store.py খোঁজা (system files exclude) ----------
+# Priority paths first
+STORE_PY=""
+for p in /root/store.py /root/bot/store.py /home/ubuntu/store.py /opt/bot/store.py; do
+  if [ -f "$p" ]; then STORE_PY="$p"; break; fi
+done
+# Fallback: search but exclude system paths
+if [ -z "$STORE_PY" ]; then
+  STORE_PY=$(find / -name "store.py" \
+    -not -path "*/node_modules/*" \
+    -not -path "*/.local/*" \
+    -not -path "*/dist-packages/*" \
+    -not -path "*/site-packages/*" \
+    -not -path "*/landscape/*" \
+    -not -path "*/proc/*" 2>/dev/null | head -1)
+fi
 if [ ! -f "$STORE_PY" ]; then
   echo -e "${RED}❌ store.py পাওয়া যায়নি। Full path দিন:${NC}"
   read -r STORE_PY
