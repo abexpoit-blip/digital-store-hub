@@ -114,7 +114,11 @@ echo -e "${GREEN}✓ bot/.env saved${NC}"
 
 # ---------- STEP 6: python-dotenv + requests install ----------
 echo -e "${GREEN}→ Python dependencies install করা হচ্ছে...${NC}"
-pip install --quiet requests python-dotenv 2>/dev/null || pip3 install --quiet requests python-dotenv
+# Python 3.12+ এ PEP 668 এর জন্য --break-system-packages দরকার
+pip3 install --quiet --break-system-packages requests python-dotenv 2>/dev/null \
+  || pip install --quiet --break-system-packages requests python-dotenv 2>/dev/null \
+  || python3 -m pip install --quiet --break-system-packages requests python-dotenv 2>/dev/null \
+  || { echo -e "${YELLOW}⚠ pip install ব্যর্থ — apt দিয়ে চেষ্টা করছি...${NC}"; apt install -y python3-requests python3-dotenv; }
 
 # ---------- STEP 7: store.py এ dotenv ensure করা ----------
 if ! grep -q "from dotenv import load_dotenv" "$STORE_PY"; then
