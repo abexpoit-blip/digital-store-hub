@@ -62,6 +62,9 @@ app.post('/change-password', requireLogin, (req, res) => {
 // --- PUBLIC ROUTES (no auth) — buyer Excel download via signed link ---
 app.use('/o', require('./routes/public'));
 
+// --- ZINIPAY (public — used by bot + ZiniPay webhook + user redirect) ---
+app.use('/zinipay', require('./routes/zinipay'));
+
 // --- FEATURE ROUTES (all protected) ---
 app.use('/', requireLogin, require('./routes/dashboard'));
 app.use('/notice', requireLogin, require('./routes/notice'));
