@@ -216,7 +216,8 @@ def main():
     )
     if not pat_start.search(src):
         die("dep_start block পাওয়া যায়নি")
-    src = pat_start.sub(NEW_DEP_START + "\n", src, count=1)
+    # IMPORTANT: lambda used so re.sub doesn't interpret \n in replacement as newline
+    src = pat_start.sub(lambda _m: NEW_DEP_START + "\n", src, count=1)
     print("✅ dep_start replaced (2 options, manual removed)")
 
     # 3) Remove leftover dep_num handler if exists (manual flow remnant)
@@ -227,7 +228,7 @@ def main():
         re.DOTALL
     )
     if pat_num.search(src):
-        src = pat_num.sub("", src, count=1)
+        src = pat_num.sub(lambda _m: "", src, count=1)
         print("✅ Old dep_num (manual sender-number) handler removed")
     else:
         print("ℹ️  No dep_num handler found (already clean)")
@@ -241,7 +242,7 @@ def main():
     )
     if not pat_amt.search(src):
         die("dep_amt block পাওয়া যায়নি")
-    src = pat_amt.sub(NEW_DEP_AMT + "\n", src, count=1)
+    src = pat_amt.sub(lambda _m: NEW_DEP_AMT + "\n", src, count=1)
     print("✅ dep_amt replaced (auto=direct link, binance=$→৳→screenshot)")
 
     with open(STORE_PY, "w", encoding="utf-8") as f:
