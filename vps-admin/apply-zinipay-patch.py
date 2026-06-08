@@ -58,7 +58,7 @@ def create_zinipay_invoice(user_id: int, username: str, amount: int):
 '''
 
 # ============== 2. NEW dep_start ==============
-NEW_DEP_START = '''@dp.callback_query(F.data == "deposit")
+NEW_DEP_START = r'''@dp.callback_query(F.data == "deposit")
 async def dep_start(c: types.CallbackQuery, state: FSMContext):
     await c.answer()
     kb = InlineKeyboardBuilder()
@@ -100,7 +100,7 @@ async def dep_binance_start(c: types.CallbackQuery, state: FSMContext):
 '''
 
 # ============== 3. NEW dep_amt (auto branch + existing logic) ==============
-NEW_DEP_AMT = '''@dp.message(ShopStates.waiting_for_deposit_amount)
+NEW_DEP_AMT = r'''@dp.message(ShopStates.waiting_for_deposit_amount)
 async def dep_amt(m: types.Message, state: FSMContext):
     if m.text.startswith("/"): return
     val_str = to_english_num(m.text).strip()
