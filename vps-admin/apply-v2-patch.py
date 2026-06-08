@@ -57,22 +57,27 @@ NEW_DEP_START = r'''@dp.callback_query(F.data == "deposit")
 async def dep_start(c: types.CallbackQuery, state: FSMContext):
     await c.answer()
     kb = InlineKeyboardBuilder()
-    kb.row(types.InlineKeyboardButton(text="⚡ Auto Payment (bKash / Nagad)", callback_data="dep_auto"))
-    kb.row(types.InlineKeyboardButton(text="💎 Binance USDT", callback_data="dep_binance"))
+    kb.row(types.InlineKeyboardButton(text="💗 bKash  ⋆  🟧 Nagad   ⚡ Auto", callback_data="dep_auto"))
+    kb.row(types.InlineKeyboardButton(text="🟡 Binance USDT   💎 Manual", callback_data="dep_binance"))
     await c.message.answer(
-        "🌟 *ডিপোজিট পদ্ধতি বাছাই করুন* 🌟\n\n"
-        "━━━━━━━━━━━━━━━━━━━━━\n"
-        "⚡ *Auto Payment* — সবচেয়ে দ্রুত ও সহজ\n"
-        "   ▸ bKash / Nagad সাপোর্ট\n"
-        "   ▸ এক ক্লিকে পেমেন্ট পেজ\n"
-        "   ▸ ১০-৩০ সেকেন্ডে ব্যালেন্স যোগ\n"
-        "   ▸ মিনিমাম ১০৳\n\n"
-        "💎 *Binance USDT* — ডলারে পেমেন্ট\n"
-        "   ▸ Rate: *$1 = 122৳* (fixed)\n"
-        "   ▸ Screenshot পাঠাবেন\n"
-        "   ▸ Admin ম্যানুয়ালি অ্যাপ্রুভ করবে\n"
-        "   ▸ মিনিমাম 1$\n"
-        "━━━━━━━━━━━━━━━━━━━━━",
+        "╭━━━━━ ✦ ✧ ✦ ━━━━━╮\n"
+        "    💎 *𝙋𝙍𝙀𝙈𝙄𝙐𝙈 𝘿𝙀𝙋𝙊𝙎𝙄𝙏* 💎\n"
+        "╰━━━━━ ✦ ✧ ✦ ━━━━━╯\n\n"
+        "🌟 *আপনার পছন্দের পেমেন্ট মেথড বাছাই করুন*\n\n"
+        "▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰\n"
+        "⚡ *𝗔𝘂𝘁𝗼 𝗣𝗮𝘆𝗺𝗲𝗻𝘁*  💗 𝐛𝐊𝐚𝐬𝐡  ◆  🟧 𝐍𝐚𝐠𝐚𝐝\n"
+        "   ✨ এক ট্যাপে পেমেন্ট পেজ\n"
+        "   ⚡ ১০–৩০ সেকেন্ডে অটো ব্যালেন্স\n"
+        "   ✅ ১০০% নিরাপদ ও ইনস্ট্যান্ট\n"
+        "   💵 মিনিমাম *১০৳*\n"
+        "▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰\n"
+        "💎 *𝗕𝗶𝗻𝗮𝗻𝗰𝗲 𝗨𝗦𝗗𝗧*  🟡 𝐃𝐨𝐥𝐥𝐚𝐫\n"
+        "   💱 Rate: *$1 = 122৳* (fixed)\n"
+        "   📸 Screenshot পাঠান\n"
+        "   👨‍💼 Admin ম্যানুয়ালি approve করবে\n"
+        "   💵 মিনিমাম *$1*\n"
+        "▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰\n\n"
+        "👇 নিচ থেকে একটি বেছে নিন",
         reply_markup=kb.as_markup(),
         parse_mode="Markdown"
     )
@@ -81,10 +86,14 @@ async def dep_start(c: types.CallbackQuery, state: FSMContext):
 async def dep_auto_start(c: types.CallbackQuery, state: FSMContext):
     await c.answer()
     await c.message.answer(
-        "⚡ *Auto Payment*\n\n"
-        "💰 কত টাকা ডিপোজিট করবেন? \n"
-        "শুধু সংখ্যা লিখুন (যেমন: `100`)\n\n"
-        "ℹ️ মিনিমাম ১০৳ — Submit করলেই পেমেন্ট লিংক পাবেন।",
+        "╭━━━━━━━━━━━━━━━╮\n"
+        "  ⚡ *𝙰𝚄𝚃𝙾 𝙿𝙰𝚈𝙼𝙴𝙽𝚃* ⚡\n"
+        "╰━━━━━━━━━━━━━━━╯\n\n"
+        "💗 *bKash*   ◆   🟧 *Nagad*\n\n"
+        "💰 *কত টাকা ডিপোজিট করবেন?*\n"
+        "✍️ শুধু সংখ্যা লিখুন — উদাহরণ: `100`\n\n"
+        "✨ Submit করলেই সরাসরি পেমেন্ট লিংক\n"
+        "ℹ️ মিনিমাম *১০৳*",
         parse_mode="Markdown"
     )
     await state.update_data(deposit_method="auto")
@@ -94,14 +103,17 @@ async def dep_auto_start(c: types.CallbackQuery, state: FSMContext):
 async def dep_binance_start(c: types.CallbackQuery, state: FSMContext):
     await c.answer()
     await c.message.answer(
-        "💎 *Binance USDT Deposit*\n\n"
-        "━━━━━━━━━━━━━━━━━━━━━\n"
+        "╭━━━━━━━━━━━━━━━━╮\n"
+        "  🟡 *𝘽𝙄𝙉𝘼𝙉𝘾𝙀 𝙐𝙎𝘿𝙏* 💎\n"
+        "╰━━━━━━━━━━━━━━━━╯\n\n"
+        "▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰\n"
         f"🏦 *Binance UID:* `{BINANCE_ID}`\n"
         "💱 *Rate:* `$1 = 122৳` (fixed)\n"
-        "━━━━━━━━━━━━━━━━━━━━━\n\n"
-        "💵 কত ডলার পাঠাবেন? \n"
-        "শুধু সংখ্যা লিখুন (যেমন: `5` মানে $5)\n\n"
-        "ℹ️ মিনিমাম 1$ = 122৳",
+        "▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰\n\n"
+        "💵 *কত ডলার পাঠাবেন?*\n"
+        "✍️ শুধু সংখ্যা লিখুন — উদাহরণ: `5` মানে $5\n\n"
+        "ℹ️ মিনিমাম *$1 = 122৳*\n"
+        "📸 amount দেওয়ার পর screenshot চাইবো",
         parse_mode="Markdown"
     )
     await state.update_data(deposit_method="binance")
