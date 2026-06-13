@@ -140,7 +140,7 @@ router.post('/upload', upload.single('file'), (req, res) => {
     return res.redirect('/stock?msg=' + encodeURIComponent('❌ Excel এ valid row পাওয়া যায়নি'));
   }
 
-  // Duplicate detection
+  // Duplicate detection (current stock)
   const existSet = new Set(db.prepare('SELECT data FROM stock').all().map(r => r.data));
   let duplicates = 0;
   const seen = new Set();
@@ -151,15 +151,34 @@ router.post('/upload', upload.single('file'), (req, res) => {
     unique.push(it);
   }
 
+  // History check — UID আগে কখনো upload হয়েছিল কিনা (last 3 days)
+  const uids = unique.map(u => extractUid(u.data)).filter(Boolean);
+  const histMap = findHistoryMatches(uids);
+  unique.forEach(u => {
+    const uid = extractUid(u.data);
+    const h = histMap.get(uid);
+    if (h) {
+      u.previouslyUploaded = true;
+      u.firstUploadedAt = h.first_uploaded_at;
+      u.uploadCount = h.upload_count;
+    }
+  });
+  const historyMatches = unique.filter(u => u.previouslyUploaded).length;
+
   const previewByCat = { [targetCategory]: unique.length };
   req.session.pendingStock = unique;
+
+  const msgParts = [];
+  if (duplicates) msgParts.push(`ℹ️ ${duplicates} duplicate (stock-এ already আছে) skip`);
+  if (historyMatches) msgParts.push(`⚠️ ${historyMatches} UID আগে upload হয়েছিল (preview-তে badge দেখুন)`);
 
   res.render('stock', renderPage({
     preview: unique.slice(0, 200),
     previewCount: unique.length,
     previewByCat,
     duplicates,
-    msg: duplicates > 0 ? `ℹ️ ${duplicates} duplicate skip হয়েছে` : null,
+    historyMatches,
+    msg: msgParts.join(' • ') || null,
   }));
 });
 
