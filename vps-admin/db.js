@@ -49,7 +49,27 @@ db.exec(`
   );
   CREATE INDEX IF NOT EXISTS idx_delivery_user ON delivery_archive(user_id);
   CREATE INDEX IF NOT EXISTS idx_delivery_sale ON delivery_archive(sale_id);
+
+  CREATE TABLE IF NOT EXISTS uid_history (
+    uid TEXT PRIMARY KEY,
+    category TEXT,
+    first_uploaded_at INTEGER NOT NULL,
+    last_seen_at INTEGER NOT NULL,
+    upload_count INTEGER DEFAULT 1
+  );
+  CREATE INDEX IF NOT EXISTS idx_uid_history_last_seen ON uid_history(last_seen_at);
 `);
+
+// Auto-cleanup UID history older than 3 days (called on every upload check)
+function cleanupOldUidHistory(days = 3) {
+  const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
+  try {
+    const r = db.prepare('DELETE FROM uid_history WHERE last_seen_at < ?').run(cutoff);
+    return r.changes;
+  } catch (e) { return 0; }
+}
+
+
 
 // Dedupe existing pending replace_requests, then create partial unique index
 // to prevent the same user from submitting the same (category, old_data) twice while pending.
@@ -74,4 +94,4 @@ function logAudit(actor, action, details = '') {
     .run(actor, action, details, Date.now());
 }
 
-module.exports = { db, logAudit, DB_PATH };
+module.exports = { db, logAudit, DB_PATH, cleanupOldUidHistory };

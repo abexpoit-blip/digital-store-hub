@@ -1,6 +1,9 @@
 <%- include('partials/header', { title: 'Stock', msg, currentPath }) %>
 
-<h1 class="text-2xl font-bold mb-1">📦 Stock Management</h1>
+<div class="flex items-center justify-between mb-1">
+  <h1 class="text-2xl font-bold">📦 Stock Management</h1>
+  <a href="/stock/check-uid" class="text-sm bg-indigo-700 hover:bg-indigo-600 px-3 py-1.5 rounded">🔍 Check UID History</a>
+</div>
 <p class="text-slate-400 text-sm mb-2">Bot এর <code class="bg-slate-800 px-1.5 py-0.5 rounded">/add</code> command এর সাথে 100% match — শুধু allowed categories ব্যবহার হবে।</p>
 
 <!-- Allowed categories info -->
@@ -18,11 +21,15 @@
 </div>
 
 <% if (preview && preview.length) { %>
+  <% var histCount = (typeof historyMatches !== 'undefined') ? historyMatches : preview.filter(function(p){return p.previouslyUploaded;}).length; %>
   <div class="bg-amber-900/20 border border-amber-700/50 rounded-xl p-5 mb-6">
     <div class="text-sm font-semibold text-amber-200 mb-2">
       ⚠ Preview — <%= previewCount %> unique items ready
       <% if (typeof duplicates !== 'undefined' && duplicates > 0) { %>
-        <span class="text-rose-300">(<%= duplicates %> duplicate skipped)</span>
+        <span class="text-rose-300">(<%= duplicates %> stock duplicate skipped)</span>
+      <% } %>
+      <% if (histCount > 0) { %>
+        <span class="text-orange-300">• ⚠️ <%= histCount %> UID আগে upload হয়েছিল (last <%= 3 %> days)</span>
       <% } %>
     </div>
     <div class="flex flex-wrap gap-2 mb-3">
@@ -35,10 +42,21 @@
     </div>
     <div class="max-h-64 overflow-y-auto bg-slate-950 rounded p-2 mb-3">
       <table class="w-full text-xs">
-        <thead><tr><th>#</th><th>Category</th><th>Data (UID PASS COOKIES)</th></tr></thead>
+        <thead><tr><th>#</th><th>Category</th><th>UID Status</th><th>Data (UID PASS COOKIES)</th></tr></thead>
         <tbody>
           <% preview.forEach(function(p, i){ %>
-            <tr><td class="text-slate-500"><%= i+1 %></td><td class="text-cyan-400"><%= p.category %></td><td class="font-mono text-slate-300"><%= p.data.length>100 ? p.data.slice(0,100)+'...' : p.data %></td></tr>
+            <tr>
+              <td class="text-slate-500"><%= i+1 %></td>
+              <td class="text-cyan-400"><%= p.category %></td>
+              <td>
+                <% if (p.previouslyUploaded) { %>
+                  <span class="bg-orange-900/60 border border-orange-700 text-orange-200 px-1.5 py-0.5 rounded text-[10px]" title="First uploaded: <%= new Date(p.firstUploadedAt).toLocaleString() %>">⚠ OLD ×<%= p.uploadCount %></span>
+                <% } else { %>
+                  <span class="bg-emerald-900/60 border border-emerald-700 text-emerald-200 px-1.5 py-0.5 rounded text-[10px]">✓ NEW</span>
+                <% } %>
+              </td>
+              <td class="font-mono text-slate-300"><%= p.data.length>100 ? p.data.slice(0,100)+'...' : p.data %></td>
+            </tr>
           <% }) %>
         </tbody>
       </table>

@@ -1,16 +1,48 @@
 const express = require('express');
 const multer = require('multer');
 const XLSX = require('xlsx');
-const { db, logAudit } = require('../db');
+const { db, logAudit, cleanupOldUidHistory } = require('../db');
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
-// Bot এ যেগুলো recognize করে — শুধু এগুলোই allow করব।
-// নতুন category দরকার হলে এই array তে add করুন (এবং bot এ ও add করুন)।
 const ALLOWED_CATEGORIES = ['fb61', 'fb1000'];
+const SEPARATOR = '###';
+const HISTORY_DAYS = 3;
 
-const SEPARATOR = '###'; // bot এর multi-upload separator
+function extractUid(line) {
+  if (!line) return '';
+  return String(line).trim().split(/\s+/)[0] || '';
+}
+
+function findHistoryMatches(uids) {
+  if (!uids.length) return new Map();
+  cleanupOldUidHistory(HISTORY_DAYS);
+  const placeholders = uids.map(() => '?').join(',');
+  const rows = db.prepare(
+    `SELECT uid, category, first_uploaded_at, upload_count FROM uid_history WHERE uid IN (${placeholders})`
+  ).all(...uids);
+  return new Map(rows.map(r => [r.uid, r]));
+}
+
+function recordUidHistory(items) {
+  const now = Date.now();
+  const up = db.prepare(`
+    INSERT INTO uid_history (uid, category, first_uploaded_at, last_seen_at, upload_count)
+    VALUES (?, ?, ?, ?, 1)
+    ON CONFLICT(uid) DO UPDATE SET
+      last_seen_at = excluded.last_seen_at,
+      upload_count = uid_history.upload_count + 1
+  `);
+  const tx = db.transaction((arr) => {
+    for (const it of arr) {
+      const uid = extractUid(it.data || it);
+      if (uid) up.run(uid, it.category || null, now, now);
+    }
+  });
+  tx(items);
+}
+
 
 function getCategoryStats() {
   return db.prepare('SELECT category, COUNT(*) AS c FROM stock GROUP BY category ORDER BY category ASC').all();
@@ -108,7 +140,7 @@ router.post('/upload', upload.single('file'), (req, res) => {
     return res.redirect('/stock?msg=' + encodeURIComponent('❌ Excel এ valid row পাওয়া যায়নি'));
   }
 
-  // Duplicate detection
+  // Duplicate detection (current stock)
   const existSet = new Set(db.prepare('SELECT data FROM stock').all().map(r => r.data));
   let duplicates = 0;
   const seen = new Set();
@@ -119,15 +151,34 @@ router.post('/upload', upload.single('file'), (req, res) => {
     unique.push(it);
   }
 
+  // History check — UID আগে কখনো upload হয়েছিল কিনা (last 3 days)
+  const uids = unique.map(u => extractUid(u.data)).filter(Boolean);
+  const histMap = findHistoryMatches(uids);
+  unique.forEach(u => {
+    const uid = extractUid(u.data);
+    const h = histMap.get(uid);
+    if (h) {
+      u.previouslyUploaded = true;
+      u.firstUploadedAt = h.first_uploaded_at;
+      u.uploadCount = h.upload_count;
+    }
+  });
+  const historyMatches = unique.filter(u => u.previouslyUploaded).length;
+
   const previewByCat = { [targetCategory]: unique.length };
   req.session.pendingStock = unique;
+
+  const msgParts = [];
+  if (duplicates) msgParts.push(`ℹ️ ${duplicates} duplicate (stock-এ already আছে) skip`);
+  if (historyMatches) msgParts.push(`⚠️ ${historyMatches} UID আগে upload হয়েছিল (preview-তে badge দেখুন)`);
 
   res.render('stock', renderPage({
     preview: unique.slice(0, 200),
     previewCount: unique.length,
     previewByCat,
     duplicates,
-    msg: duplicates > 0 ? `ℹ️ ${duplicates} duplicate skip হয়েছে` : null,
+    historyMatches,
+    msg: msgParts.join(' • ') || null,
   }));
 });
 
@@ -138,6 +189,9 @@ router.post('/confirm', (req, res) => {
   const insert = db.prepare('INSERT INTO stock (category, data) VALUES (?, ?)');
   const tx = db.transaction((items) => { for (const it of items) insert.run(it.category, it.data); });
   tx(pending);
+
+  // Record UID history
+  try { recordUidHistory(pending); } catch (e) { console.warn('uid_history record failed:', e.message); }
 
   const breakdown = {};
   pending.forEach(p => { breakdown[p.category] = (breakdown[p.category] || 0) + 1; });
@@ -185,10 +239,54 @@ router.post('/manual', (req, res) => {
   const tx = db.transaction((arr) => { for (const d of arr) insert.run(category, d); });
   tx(unique);
 
-  logAudit('admin', 'stock_manual', `category=${category} added=${unique.length} dup=${duplicates}`);
-  res.redirect('/stock?msg=' + encodeURIComponent(
-    `✅ ${unique.length} items added to ${category}` + (duplicates ? ` (${duplicates} duplicate skipped)` : '')
-  ));
+  // History check + record
+  const uids = unique.map(extractUid).filter(Boolean);
+  const histMap = findHistoryMatches(uids);
+  const historyMatches = uids.filter(u => histMap.has(u)).length;
+  try { recordUidHistory(unique.map(d => ({ category, data: d }))); } catch (e) {}
+
+  logAudit('admin', 'stock_manual', `category=${category} added=${unique.length} dup=${duplicates} hist=${historyMatches}`);
+  const parts = [`✅ ${unique.length} items added to ${category}`];
+  if (duplicates) parts.push(`${duplicates} duplicate skipped`);
+  if (historyMatches) parts.push(`⚠️ ${historyMatches} UID আগে upload হয়েছিল`);
+  res.redirect('/stock?msg=' + encodeURIComponent(parts.join(' • ')));
+});
+
+// ===== UID CHECKER =====
+// Paste UIDs (one per line or space-separated) → check which were uploaded before
+router.get('/check-uid', (req, res) => {
+  cleanupOldUidHistory(HISTORY_DAYS);
+  const total = db.prepare('SELECT COUNT(*) AS c FROM uid_history').get().c;
+  res.render('check-uid', { results: null, input: '', total, days: HISTORY_DAYS, msg: null, currentPath: '/stock/check-uid' });
+});
+
+router.post('/check-uid', (req, res) => {
+  cleanupOldUidHistory(HISTORY_DAYS);
+  const input = (req.body.uids || '').trim();
+  const uids = [...new Set(input.split(/[\s,;]+/).map(s => s.trim()).filter(Boolean))];
+
+  const histMap = findHistoryMatches(uids);
+  const results = uids.map(uid => {
+    const h = histMap.get(uid);
+    return {
+      uid,
+      found: !!h,
+      category: h ? h.category : null,
+      firstUploadedAt: h ? h.first_uploaded_at : null,
+      uploadCount: h ? h.upload_count : 0,
+    };
+  });
+
+  const total = db.prepare('SELECT COUNT(*) AS c FROM uid_history').get().c;
+  const foundCount = results.filter(r => r.found).length;
+  res.render('check-uid', {
+    results,
+    input,
+    total,
+    days: HISTORY_DAYS,
+    msg: `Checked ${uids.length} UID • ${foundCount} আগে upload হয়েছিল • ${uids.length - foundCount} নতুন`,
+    currentPath: '/stock/check-uid',
+  });
 });
 
 router.post('/clear/:category', (req, res) => {
