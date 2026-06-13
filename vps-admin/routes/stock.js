@@ -1,16 +1,48 @@
 const express = require('express');
 const multer = require('multer');
 const XLSX = require('xlsx');
-const { db, logAudit } = require('../db');
+const { db, logAudit, cleanupOldUidHistory } = require('../db');
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
-// Bot এ যেগুলো recognize করে — শুধু এগুলোই allow করব।
-// নতুন category দরকার হলে এই array তে add করুন (এবং bot এ ও add করুন)।
 const ALLOWED_CATEGORIES = ['fb61', 'fb1000'];
+const SEPARATOR = '###';
+const HISTORY_DAYS = 3;
 
-const SEPARATOR = '###'; // bot এর multi-upload separator
+function extractUid(line) {
+  if (!line) return '';
+  return String(line).trim().split(/\s+/)[0] || '';
+}
+
+function findHistoryMatches(uids) {
+  if (!uids.length) return new Map();
+  cleanupOldUidHistory(HISTORY_DAYS);
+  const placeholders = uids.map(() => '?').join(',');
+  const rows = db.prepare(
+    `SELECT uid, category, first_uploaded_at, upload_count FROM uid_history WHERE uid IN (${placeholders})`
+  ).all(...uids);
+  return new Map(rows.map(r => [r.uid, r]));
+}
+
+function recordUidHistory(items) {
+  const now = Date.now();
+  const up = db.prepare(`
+    INSERT INTO uid_history (uid, category, first_uploaded_at, last_seen_at, upload_count)
+    VALUES (?, ?, ?, ?, 1)
+    ON CONFLICT(uid) DO UPDATE SET
+      last_seen_at = excluded.last_seen_at,
+      upload_count = uid_history.upload_count + 1
+  `);
+  const tx = db.transaction((arr) => {
+    for (const it of arr) {
+      const uid = extractUid(it.data || it);
+      if (uid) up.run(uid, it.category || null, now, now);
+    }
+  });
+  tx(items);
+}
+
 
 function getCategoryStats() {
   return db.prepare('SELECT category, COUNT(*) AS c FROM stock GROUP BY category ORDER BY category ASC').all();
