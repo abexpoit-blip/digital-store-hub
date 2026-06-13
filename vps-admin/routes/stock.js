@@ -190,6 +190,9 @@ router.post('/confirm', (req, res) => {
   const tx = db.transaction((items) => { for (const it of items) insert.run(it.category, it.data); });
   tx(pending);
 
+  // Record UID history
+  try { recordUidHistory(pending); } catch (e) { console.warn('uid_history record failed:', e.message); }
+
   const breakdown = {};
   pending.forEach(p => { breakdown[p.category] = (breakdown[p.category] || 0) + 1; });
   const summary = Object.entries(breakdown).map(([k, v]) => `${k}:${v}`).join(', ');
