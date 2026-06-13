@@ -1,0 +1,61 @@
+<%- include('partials/header', { title: 'Check UID', msg, currentPath }) %>
+
+<div class="flex items-center justify-between mb-3">
+  <h1 class="text-2xl font-bold">🔍 Check UID History</h1>
+  <a href="/stock" class="text-sm text-slate-400 hover:text-white">← Back to Stock</a>
+</div>
+
+<div class="bg-indigo-950/40 border border-indigo-800/50 rounded-lg p-3 mb-5 text-xs">
+  <div class="text-indigo-200">
+    📌 যেকোনো Facebook UID paste করুন — system বলবে এটা গত <strong><%= days %> দিনে</strong> upload হয়েছিল কিনা।
+  </div>
+  <div class="text-slate-400 mt-1">
+    Current history: <strong class="text-white"><%= total %></strong> UID tracked •
+    <%= days %> দিনের পুরনো record auto-delete হয়
+  </div>
+</div>
+
+<form method="post" action="/stock/check-uid" class="bg-slate-900 border border-slate-800 p-5 rounded-xl mb-5">
+  <label class="text-xs text-slate-400 block mb-1">UIDs (one per line, or space/comma separated):</label>
+  <textarea name="uids" rows="6" required
+    placeholder="100011382171459&#10;100011382171460&#10;100011382171461"
+    class="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-xs font-mono mb-3"><%= input %></textarea>
+  <button class="bg-indigo-600 hover:bg-indigo-500 px-4 py-2 rounded text-sm font-semibold">🔍 Check Now</button>
+</form>
+
+<% if (results) { %>
+  <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+    <div class="px-4 py-3 border-b border-slate-800 text-sm font-semibold flex justify-between">
+      <span>Results — <%= results.length %> UID checked</span>
+      <span class="text-xs text-slate-400">
+        <span class="text-orange-300"><%= results.filter(function(r){return r.found;}).length %> OLD</span> •
+        <span class="text-emerald-300"><%= results.filter(function(r){return !r.found;}).length %> NEW</span>
+      </span>
+    </div>
+    <div class="max-h-[60vh] overflow-y-auto">
+      <table class="w-full text-xs">
+        <thead><tr><th>#</th><th>UID</th><th>Status</th><th>Category</th><th>First Uploaded</th><th>Times</th></tr></thead>
+        <tbody>
+          <% results.forEach(function(r, i){ %>
+            <tr class="<%= r.found ? 'bg-orange-950/20' : '' %>">
+              <td class="text-slate-500"><%= i+1 %></td>
+              <td class="font-mono text-slate-200"><%= r.uid %></td>
+              <td>
+                <% if (r.found) { %>
+                  <span class="bg-orange-900/60 border border-orange-700 text-orange-200 px-2 py-0.5 rounded">⚠ আগে upload হয়েছিল</span>
+                <% } else { %>
+                  <span class="bg-emerald-900/60 border border-emerald-700 text-emerald-200 px-2 py-0.5 rounded">✓ নতুন</span>
+                <% } %>
+              </td>
+              <td class="text-cyan-400"><%= r.category || '—' %></td>
+              <td class="text-slate-400"><%= r.firstUploadedAt ? new Date(r.firstUploadedAt).toLocaleString() : '—' %></td>
+              <td class="text-slate-300"><%= r.uploadCount || '—' %></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+<% } %>
+
+<%- include('partials/footer') %>
