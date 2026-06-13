@@ -94,4 +94,4 @@ function logAudit(actor, action, details = '') {
     .run(actor, action, details, Date.now());
 }
 
-module.exports = { db, logAudit, DB_PATH };
+module.exports = { db, logAudit, DB_PATH, cleanupOldUidHistory };
