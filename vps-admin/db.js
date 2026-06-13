@@ -69,7 +69,7 @@ function cleanupOldUidHistory(days = 3) {
   } catch (e) { return 0; }
 }
 
-module.exports.cleanupOldUidHistory = cleanupOldUidHistory;
+
 
 // Dedupe existing pending replace_requests, then create partial unique index
 // to prevent the same user from submitting the same (category, old_data) twice while pending.
