@@ -239,10 +239,54 @@ router.post('/manual', (req, res) => {
   const tx = db.transaction((arr) => { for (const d of arr) insert.run(category, d); });
   tx(unique);
 
-  logAudit('admin', 'stock_manual', `category=${category} added=${unique.length} dup=${duplicates}`);
-  res.redirect('/stock?msg=' + encodeURIComponent(
-    `✅ ${unique.length} items added to ${category}` + (duplicates ? ` (${duplicates} duplicate skipped)` : '')
-  ));
+  // History check + record
+  const uids = unique.map(extractUid).filter(Boolean);
+  const histMap = findHistoryMatches(uids);
+  const historyMatches = uids.filter(u => histMap.has(u)).length;
+  try { recordUidHistory(unique.map(d => ({ category, data: d }))); } catch (e) {}
+
+  logAudit('admin', 'stock_manual', `category=${category} added=${unique.length} dup=${duplicates} hist=${historyMatches}`);
+  const parts = [`✅ ${unique.length} items added to ${category}`];
+  if (duplicates) parts.push(`${duplicates} duplicate skipped`);
+  if (historyMatches) parts.push(`⚠️ ${historyMatches} UID আগে upload হয়েছিল`);
+  res.redirect('/stock?msg=' + encodeURIComponent(parts.join(' • ')));
+});
+
+// ===== UID CHECKER =====
+// Paste UIDs (one per line or space-separated) → check which were uploaded before
+router.get('/check-uid', (req, res) => {
+  cleanupOldUidHistory(HISTORY_DAYS);
+  const total = db.prepare('SELECT COUNT(*) AS c FROM uid_history').get().c;
+  res.render('check-uid', { results: null, input: '', total, days: HISTORY_DAYS, msg: null, currentPath: '/stock/check-uid' });
+});
+
+router.post('/check-uid', (req, res) => {
+  cleanupOldUidHistory(HISTORY_DAYS);
+  const input = (req.body.uids || '').trim();
+  const uids = [...new Set(input.split(/[\s,;]+/).map(s => s.trim()).filter(Boolean))];
+
+  const histMap = findHistoryMatches(uids);
+  const results = uids.map(uid => {
+    const h = histMap.get(uid);
+    return {
+      uid,
+      found: !!h,
+      category: h ? h.category : null,
+      firstUploadedAt: h ? h.first_uploaded_at : null,
+      uploadCount: h ? h.upload_count : 0,
+    };
+  });
+
+  const total = db.prepare('SELECT COUNT(*) AS c FROM uid_history').get().c;
+  const foundCount = results.filter(r => r.found).length;
+  res.render('check-uid', {
+    results,
+    input,
+    total,
+    days: HISTORY_DAYS,
+    msg: `Checked ${uids.length} UID • ${foundCount} আগে upload হয়েছিল • ${uids.length - foundCount} নতুন`,
+    currentPath: '/stock/check-uid',
+  });
 });
 
 router.post('/clear/:category', (req, res) => {
