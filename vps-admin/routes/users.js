@@ -104,6 +104,7 @@ router.post('/:id/balance', (req, res) => {
 
 router.post('/:id/ban', (req, res) => {
   const userId = parseInt(req.params.id, 10);
+  if (!Number.isFinite(userId)) return res.redirect('/users?msg=Invalid+user');
   const banned = req.body.banned === '1' ? 1 : 0;
   db.prepare('UPDATE users SET is_banned = ? WHERE user_id = ?').run(banned, userId);
   logAudit('admin', banned ? 'ban_user' : 'unban_user', `user=${userId}`);
