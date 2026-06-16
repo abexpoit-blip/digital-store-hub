@@ -36,6 +36,7 @@ router.get('/', (req, res) => {
 
 router.get('/:id', (req, res) => {
   const userId = parseInt(req.params.id, 10);
+  if (!Number.isFinite(userId)) return res.status(400).render('error', { message: 'Invalid user id' });
   const user = db.prepare('SELECT * FROM users WHERE user_id = ?').get(userId);
   if (!user) return res.status(404).render('error', { message: 'User not found' });
 
@@ -85,19 +86,25 @@ router.get('/:id', (req, res) => {
 router.post('/:id/balance', (req, res) => {
   const userId = parseInt(req.params.id, 10);
   const delta = parseInt(req.body.delta, 10);
-  const reason = (req.body.reason || '').trim();
-  if (isNaN(delta)) return res.redirect(`/users/${userId}?msg=Invalid+amount`);
-  const user = db.prepare('SELECT balance FROM users WHERE user_id = ?').get(userId);
-  if (!user) return res.redirect('/users');
-  const newBal = (user.balance || 0) + delta;
-  db.prepare('UPDATE users SET balance = ? WHERE user_id = ?').run(newBal, userId);
+  const reason = (req.body.reason || '').replace(/"/g, "'").trim();
+  if (!Number.isFinite(userId)) return res.redirect('/users?msg=Invalid+user');
+  if (!Number.isFinite(delta) || delta === 0) return res.redirect(`/users/${userId}?msg=Invalid+amount`);
+  // Atomic balance update — no read-then-write race
+  const upd = db.prepare(
+    'UPDATE users SET balance = COALESCE(balance,0) + ? WHERE user_id = ? AND (? > 0 OR COALESCE(balance,0) + ? >= 0)'
+  ).run(delta, userId, delta, delta);
+  if (upd.changes === 0) {
+    return res.redirect(`/users/${userId}?msg=` + encodeURIComponent('❌ User not found or insufficient balance'));
+  }
+  const row = db.prepare('SELECT balance FROM users WHERE user_id = ?').get(userId);
   logAudit('admin', 'balance_adjust',
-    `user=${userId} delta=${delta} new=${newBal} reason="${reason}"`);
+    `user=${userId} delta=${delta} new=${row ? row.balance : '?'} reason="${reason}"`);
   res.redirect(`/users/${userId}?msg=` + encodeURIComponent(`Balance updated: ${delta > 0 ? '+' : ''}${delta} Tk`));
 });
 
 router.post('/:id/ban', (req, res) => {
   const userId = parseInt(req.params.id, 10);
+  if (!Number.isFinite(userId)) return res.redirect('/users?msg=Invalid+user');
   const banned = req.body.banned === '1' ? 1 : 0;
   db.prepare('UPDATE users SET is_banned = ? WHERE user_id = ?').run(banned, userId);
   logAudit('admin', banned ? 'ban_user' : 'unban_user', `user=${userId}`);
