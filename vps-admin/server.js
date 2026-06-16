@@ -51,11 +51,12 @@ app.post('/logout', (req, res) => {
 });
 
 app.post('/change-password', requireLogin, (req, res) => {
-  const { current, next: newPass } = req.body;
+  const current = req.body && typeof req.body.current === 'string' ? req.body.current : '';
+  const newPass = req.body && typeof req.body.next === 'string' ? req.body.next : '';
   if (!verifyPassword(current)) {
     return res.redirect('/?msg=' + encodeURIComponent('Current password ভুল!'));
   }
-  if (!newPass || newPass.length < 6) {
+  if (newPass.length < 6) {
     return res.redirect('/?msg=' + encodeURIComponent('New password কমপক্ষে 6 character দরকার!'));
   }
   changePassword(newPass);
@@ -85,7 +86,7 @@ app.use((req, res) => res.status(404).render('error', { message: 'Page not found
 
 // Error handler
 app.use((err, req, res, next) => {
-  console.error('[error]', err);
+  console.error('[error]', req.method, req.originalUrl, err && err.stack ? err.stack : err);
   res.status(500).render('error', { message: err.message || 'Server error' });
 });
 
