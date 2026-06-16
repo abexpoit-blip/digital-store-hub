@@ -78,7 +78,18 @@ router.post('/create-invoice', express.json(), async (req, res) => {
       return res.status(502).json({ ok: false, error: 'zinipay create failed', detail: data });
     }
     const payment_url = data.payment_url || data.url;
-    const invoice_id  = data.invoice_id || data.id || data.invoiceId || null;
+    // CRITICAL FIX: ZiniPay create response does NOT include invoice_id field.
+    // The real verifiable invoice_id is the LAST PATH SEGMENT of payment_url.
+    // `val_id` is NOT accepted by /verify endpoint (returns "Invoice not found").
+    let invoice_id = data.invoice_id || data.id || data.invoiceId || null;
+    if (!invoice_id && payment_url) {
+      try {
+        const u = new URL(payment_url);
+        const seg = u.pathname.split('/').filter(Boolean).pop();
+        if (seg && /^[0-9a-f-]{20,}$/i.test(seg)) invoice_id = seg;
+      } catch (_) {}
+    }
+    console.log('[zinipay create] req_id=%s invoice_id=%s val_id=%s', req_id, invoice_id, data.val_id);
 
     // Insert pending row
     db.prepare(
