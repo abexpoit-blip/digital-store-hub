@@ -38,6 +38,66 @@ async function tgNotify(chatId, text) {
   } catch (e) { console.error('[zinipay] tg notify fail:', e.message); }
 }
 
+function isPaidStatus(vdata) {
+  const status = (vdata.status || vdata.payment_status || '').toString().toUpperCase();
+  return status === 'COMPLETED' || status === 'SUCCESS' || status === 'PAID' || status === 'TRUE' || vdata.status === true;
+}
+
+async function verifyAndApprove(invoice_id, source = 'manual') {
+  if (!invoice_id) return { approved: false, error: 'missing invoice_id' };
+
+  const vr = await fetch(`${ZINIPAY_BASE}/verify`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'zini-api-key': ZINIPAY_API_KEY,
+      'zinipay-api-key': ZINIPAY_API_KEY
+    },
+    body: JSON.stringify({ invoice_id })
+  });
+  const vdata = await vr.json().catch(() => ({}));
+  console.log('[zinipay verify]', source, vr.status, invoice_id, JSON.stringify(vdata));
+
+  const row = db.prepare(`SELECT * FROM payment_logs WHERE invoice_id = ?`).get(invoice_id);
+  if (!row) {
+    console.warn('[zinipay] no matching row for invoice', invoice_id);
+    return { approved: false, noRow: true, status: vdata.status || vdata.payment_status || null };
+  }
+  if (row.status === 'approved') return { alreadyApproved: true };
+  if (!vr.ok || !isPaidStatus(vdata)) {
+    return { approved: false, status: vdata.status || vdata.payment_status || null };
+  }
+
+  const verifiedAmount = parseInt(vdata.amount || row.amount, 10);
+  const txnId = vdata.transaction_id || vdata.trxId || vdata.trxID || vdata.txn_id || '';
+  const senderPhone = vdata.sender_number || vdata.sender || vdata.senderNumber || '';
+  const payMethod = vdata.payment_method || vdata.provider || 'bkash/nagad';
+
+  const tx = db.transaction(() => {
+    const updated = db.prepare(
+      `UPDATE payment_logs
+         SET status='approved', amount=?, transaction_id=?, sender_num=?, admin_name=?
+       WHERE req_id=? AND status='pending'`
+    ).run(verifiedAmount, txnId, senderPhone, `ZiniPay-${payMethod}`, row.req_id);
+
+    if (updated.changes > 0) {
+      db.prepare(`INSERT OR IGNORE INTO users (user_id, balance) VALUES (?, 0)`).run(row.user_id);
+      db.prepare(`UPDATE users SET balance = COALESCE(balance,0) + ? WHERE user_id = ?`)
+        .run(verifiedAmount, row.user_id);
+    }
+    return updated.changes;
+  });
+  const changes = tx();
+  if (!changes) return { alreadyApproved: true };
+
+  logAudit(`zinipay-${source}`, 'auto-approve', `user=${row.user_id} amt=${verifiedAmount} inv=${invoice_id} txn=${txnId}`);
+  tgNotify(row.user_id,
+    `✅ *Deposit Successful!*\n\n💰 Amount: *${verifiedAmount}৳*\n🧾 TXN: \`${txnId || 'N/A'}\`\n💳 Method: ${payMethod}\n\nব্যালেন্স এ যোগ হয়েছে। ধন্যবাদ!`
+  );
+
+  return { approved: true, amount: verifiedAmount, transaction_id: txnId };
+}
+
 // =====================================================================
 // 1) Bot creates invoice via this endpoint (shared-secret protected)
 // =====================================================================
@@ -113,72 +173,22 @@ router.post('/create-invoice', express.json(), async (req, res) => {
 // 2) Webhook — ZiniPay POSTs { invoice_id, status } here
 //    Security: re-Verify via API (ZiniPay webhooks have NO signature)
 // =====================================================================
-router.post('/webhook', express.json(), async (req, res) => {
+async function handleWebhook(req, res) {
   try {
-    console.log('[zinipay webhook]', JSON.stringify(req.body));
-    const invoice_id = req.body?.invoice_id || req.body?.invoiceId;
+    console.log('[zinipay webhook]', JSON.stringify({ body: req.body || {}, query: req.query || {} }));
+    const invoice_id = req.body?.invoice_id || req.body?.invoiceId || req.query?.invoice_id || req.query?.invoiceId;
     if (!invoice_id) return res.status(400).send('no invoice_id');
-
-    // Verify with ZiniPay
-    const vr = await fetch(`${ZINIPAY_BASE}/verify`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'zini-api-key': ZINIPAY_API_KEY },
-      body: JSON.stringify({ invoice_id })
-    });
-    const vdata = await vr.json();
-    console.log('[zinipay verify]', vr.status, JSON.stringify(vdata));
-
-    const status   = (vdata.status || vdata.payment_status || '').toString().toUpperCase();
-    const verified = vr.ok && (status === 'COMPLETED' || status === 'SUCCESS' || status === 'TRUE' || vdata.status === true);
-
-    // Find pending row by invoice_id
-    const row = db.prepare(`SELECT * FROM payment_logs WHERE invoice_id = ?`).get(invoice_id);
-    if (!row) {
-      console.warn('[zinipay] no matching row for invoice', invoice_id);
-      return res.status(200).send('ok (no row)');
-    }
-    if (row.status === 'approved') {
-      return res.status(200).send('ok (already approved)');
-    }
-
-    if (!verified) {
-      console.warn('[zinipay] verify failed for', invoice_id, status);
-      return res.status(200).send('ok (not verified yet)');
-    }
-
-    const verifiedAmount = parseInt(vdata.amount || row.amount, 10);
-    const txnId = vdata.transaction_id || vdata.trxId || vdata.trxID || '';
-    const senderPhone = vdata.sender_number || vdata.sender || '';
-    const payMethod = vdata.payment_method || 'bkash/nagad';
-
-    // Atomic: approve payment + add balance
-    const tx = db.transaction(() => {
-      db.prepare(
-        `UPDATE payment_logs
-           SET status='approved', amount=?, transaction_id=?, sender_num=?, admin_name=?
-         WHERE req_id=? AND status='pending'`
-      ).run(verifiedAmount, txnId, senderPhone, `ZiniPay-${payMethod}`, row.req_id);
-
-      // Ensure user row exists, then add balance
-      db.prepare(`INSERT OR IGNORE INTO users (user_id, balance) VALUES (?, 0)`).run(row.user_id);
-      db.prepare(`UPDATE users SET balance = COALESCE(balance,0) + ? WHERE user_id = ?`)
-        .run(verifiedAmount, row.user_id);
-    });
-    tx();
-
-    logAudit('zinipay-webhook', 'auto-approve', `user=${row.user_id} amt=${verifiedAmount} inv=${invoice_id} txn=${txnId}`);
-
-    // Notify user on Telegram
-    tgNotify(row.user_id,
-      `✅ *Deposit Successful!*\n\n💰 Amount: *${verifiedAmount}৳*\n🧾 TXN: \`${txnId}\`\n💳 Method: ${payMethod}\n\nব্যালেন্স এ যোগ হয়েছে। ধন্যবাদ!`
-    );
-
+    const result = await verifyAndApprove(invoice_id, 'webhook');
+    if (!result.approved && !result.alreadyApproved) console.warn('[zinipay] not approved yet', invoice_id, result.status || result.error || 'unknown');
     res.status(200).send('ok');
   } catch (e) {
     console.error('[zinipay webhook] error:', e);
     res.status(200).send('ok'); // always 200 so ZiniPay doesn't retry forever
   }
-});
+}
+
+router.post('/webhook', express.json(), handleWebhook);
+router.get('/webhook', handleWebhook);
 
 // =====================================================================
 // 3) Return page — user redirected here after pay/cancel
@@ -256,6 +266,12 @@ router.post('/cleanup-now', express.json(), async (req, res) => {
   await cleanupStalePending();
   res.json({ ok: true, message: 'cleanup triggered' });
 });
+
+try {
+  require('./zinipay-reconcile').attach(verifyAndApprove);
+} catch (e) {
+  console.error('[reconcile] attach failed:', e.message);
+}
 
 module.exports = router;
 
