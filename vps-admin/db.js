@@ -58,6 +58,40 @@ db.exec(`
     upload_count INTEGER DEFAULT 1
   );
   CREATE INDEX IF NOT EXISTS idx_uid_history_last_seen ON uid_history(last_seen_at);
+
+  CREATE TABLE IF NOT EXISTS polls (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    question TEXT NOT NULL,
+    options_json TEXT NOT NULL,
+    is_anonymous INTEGER DEFAULT 0,
+    allows_multiple INTEGER DEFAULT 0,
+    created_by TEXT,
+    created_at INTEGER NOT NULL,
+    sent_count INTEGER DEFAULT 0,
+    failed_count INTEGER DEFAULT 0,
+    status TEXT DEFAULT 'draft'
+  );
+
+  CREATE TABLE IF NOT EXISTS poll_sent_map (
+    tg_poll_id TEXT PRIMARY KEY,
+    poll_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    chat_message_id INTEGER,
+    sent_at INTEGER NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_psm_poll ON poll_sent_map(poll_id);
+
+  CREATE TABLE IF NOT EXISTS poll_votes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    poll_id INTEGER NOT NULL,
+    tg_poll_id TEXT NOT NULL,
+    user_id INTEGER NOT NULL,
+    username TEXT,
+    option_ids TEXT NOT NULL,
+    voted_at INTEGER NOT NULL,
+    UNIQUE(tg_poll_id, user_id)
+  );
+  CREATE INDEX IF NOT EXISTS idx_pv_poll ON poll_votes(poll_id);
 `);
 
 // Auto-cleanup UID history older than 3 days (called on every upload check)
