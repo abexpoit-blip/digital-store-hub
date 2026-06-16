@@ -36,6 +36,7 @@ router.get('/', (req, res) => {
 
 router.get('/:id', (req, res) => {
   const userId = parseInt(req.params.id, 10);
+  if (!Number.isFinite(userId)) return res.status(400).render('error', { message: 'Invalid user id' });
   const user = db.prepare('SELECT * FROM users WHERE user_id = ?').get(userId);
   if (!user) return res.status(404).render('error', { message: 'User not found' });
 
