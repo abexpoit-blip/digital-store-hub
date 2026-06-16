@@ -35,7 +35,10 @@ app.get('/login', (req, res) => {
 });
 
 app.post('/login', (req, res) => {
-  const { password } = req.body;
+  const password = req.body && typeof req.body.password === 'string' ? req.body.password : '';
+  if (!password) {
+    return res.status(400).render('login', { error: 'Password দিন!' });
+  }
   if (verifyPassword(password)) {
     req.session.loggedIn = true;
     return res.redirect('/');
