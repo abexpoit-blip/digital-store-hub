@@ -79,7 +79,7 @@ async function runReconcile() {
           recovered++;
           _invState.delete(row.invoice_id); // done
         }
-      } catch (_) { /* keep going */ }
+      } catch (e) { console.error('[reconcile] verify err inv=' + row.invoice_id, e && e.message ? e.message : e); }
     }
 
     // --- Phase 2: orphan match via ZiniPay list API (run every 6th cycle = 30 min) ---
