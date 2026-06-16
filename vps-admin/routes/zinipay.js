@@ -267,5 +267,11 @@ router.post('/cleanup-now', express.json(), async (req, res) => {
   res.json({ ok: true, message: 'cleanup triggered' });
 });
 
+try {
+  require('./zinipay-reconcile').attach(verifyAndApprove);
+} catch (e) {
+  console.error('[reconcile] attach failed:', e.message);
+}
+
 module.exports = router;
 
