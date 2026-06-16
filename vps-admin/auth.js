@@ -14,9 +14,15 @@ function initAdminPassword() {
 }
 
 function verifyPassword(plain) {
+  if (typeof plain !== 'string' || plain.length === 0) return false;
   const row = db.prepare('SELECT password_hash FROM admin_auth WHERE id = 1').get();
-  if (!row) return false;
-  return bcrypt.compareSync(plain, row.password_hash);
+  if (!row || typeof row.password_hash !== 'string') return false;
+  try {
+    return bcrypt.compareSync(plain, row.password_hash);
+  } catch (e) {
+    console.error('[auth] verifyPassword error:', e.message);
+    return false;
+  }
 }
 
 function changePassword(newPlain) {
