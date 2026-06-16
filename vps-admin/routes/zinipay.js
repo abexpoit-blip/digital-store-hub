@@ -189,4 +189,62 @@ router.get('/return', (req, res) => {
 </body></html>`);
 });
 
+// =====================================================================
+// 4) Auto-cleanup — pending invoices older than 24h → mark as 'failed'
+//    Runs every 30 minutes. User notified on Telegram so they can retry.
+// =====================================================================
+const CLEANUP_AGE_SECONDS = 24 * 60 * 60; // 24 hours
+const CLEANUP_INTERVAL_MS = 30 * 60 * 1000; // 30 minutes
+
+async function cleanupStalePending() {
+  try {
+    const cutoff = Math.floor(Date.now() / 1000) - CLEANUP_AGE_SECONDS;
+    const stale = db.prepare(
+      `SELECT req_id, user_id, amount, invoice_id
+         FROM payment_logs
+        WHERE status = 'pending'
+          AND method = 'zinipay'
+          AND COALESCE(timestamp, 0) < ?`
+    ).all(cutoff);
+
+    if (!stale.length) return;
+    console.log(`[zinipay cleanup] found ${stale.length} stale pending invoices (>24h)`);
+
+    const upd = db.prepare(
+      `UPDATE payment_logs SET status='failed', admin_name='Auto-Cleanup-24h' WHERE req_id=? AND status='pending'`
+    );
+
+    for (const row of stale) {
+      const r = upd.run(row.req_id);
+      if (r.changes > 0) {
+        logAudit('zinipay-cleanup', 'auto-fail-24h', `user=${row.user_id} amt=${row.amount} inv=${row.invoice_id || '-'} req=${row.req_id}`);
+        // Notify user so they can retry
+        tgNotify(row.user_id,
+          `⏰ *Deposit Request Expired*\n\n` +
+          `আপনার *${row.amount}৳* এর pending deposit ২৪ ঘণ্টার মধ্যে complete হয়নি, তাই auto-cancel করা হলো।\n\n` +
+          `👉 আবার চেষ্টা করতে *💳 ব্যালেন্স অ্যাড* মেনু থেকে নতুন payment শুরু করুন।`
+        );
+      }
+    }
+  } catch (e) {
+    console.error('[zinipay cleanup] error:', e.message);
+  }
+}
+
+// Run once at boot (after 1 min delay), then every 30 min
+setTimeout(cleanupStalePending, 60 * 1000);
+setInterval(cleanupStalePending, CLEANUP_INTERVAL_MS);
+console.log('[zinipay] auto-cleanup scheduled: every 30 min, threshold=24h');
+
+// Manual trigger endpoint (admin-only via download secret) — useful for testing
+router.post('/cleanup-now', express.json(), async (req, res) => {
+  const { secret } = req.body || {};
+  if (!SHARED_SECRET || secret !== SHARED_SECRET) {
+    return res.status(401).json({ ok: false, error: 'bad secret' });
+  }
+  await cleanupStalePending();
+  res.json({ ok: true, message: 'cleanup triggered' });
+});
+
 module.exports = router;
+
