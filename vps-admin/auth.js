@@ -26,6 +26,9 @@ function verifyPassword(plain) {
 }
 
 function changePassword(newPlain) {
+  if (typeof newPlain !== 'string' || newPlain.length < 6) {
+    throw new Error('Invalid new password');
+  }
   const hash = bcrypt.hashSync(newPlain, 10);
   db.prepare('UPDATE admin_auth SET password_hash = ?, updated_at = ? WHERE id = 1')
     .run(hash, Date.now());
