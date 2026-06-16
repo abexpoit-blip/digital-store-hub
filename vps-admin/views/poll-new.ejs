@@ -1,0 +1,41 @@
+<%- include('partials/header', { title: 'New Poll', msg, currentPath }) %>
+
+<h1 class="text-2xl font-bold mb-2">➕ New Poll</h1>
+<p class="text-sm text-slate-400 mb-6">Telegram-এর native poll তৈরি করুন। User tap করে vote দিতে পারবে।</p>
+
+<% if (!botTokenSet) { %>
+  <div class="bg-rose-900/40 border border-rose-700 text-rose-200 p-4 rounded-xl mb-6 text-sm">
+    ⚠️ <b>BOT_TOKEN missing!</b> Poll তৈরি হবে draft হিসেবে কিন্তু পাঠানো যাবে না।
+  </div>
+<% } %>
+
+<form method="post" action="/polls/create" class="bg-slate-900 border border-slate-800 p-5 rounded-xl space-y-4 max-w-2xl">
+  <div>
+    <label class="text-sm font-semibold block mb-2">Question (সর্বোচ্চ 300 char)</label>
+    <input name="question" required maxlength="300" placeholder="যেমন: আজ কোন VPN best?"
+      class="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm"/>
+  </div>
+
+  <div>
+    <label class="text-sm font-semibold block mb-2">Options (প্রতি line এ একটা, 2-10 টা, প্রতি option ≤100 char)</label>
+    <textarea name="options" rows="6" required placeholder="HideMyVPN&#10;NordVPN&#10;ProtonVPN&#10;ExpressVPN"
+      class="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm font-mono"></textarea>
+  </div>
+
+  <div class="flex gap-6 text-sm">
+    <label class="flex items-center gap-2">
+      <input type="checkbox" name="allows_multiple" value="1"/> Multiple answers allow
+    </label>
+    <label class="flex items-center gap-2">
+      <input type="checkbox" name="is_anonymous" value="1"/> Anonymous (কে vote দিল track হবে না)
+    </label>
+  </div>
+
+  <div class="flex gap-3 pt-2">
+    <button name="send_now" value="1" class="bg-emerald-600 hover:bg-emerald-500 px-5 py-2 rounded text-sm font-semibold">💾 Save & Send to all</button>
+    <button class="bg-slate-700 hover:bg-slate-600 px-5 py-2 rounded text-sm font-semibold">💾 Save as draft</button>
+    <a href="/polls" class="px-4 py-2 text-sm text-slate-400 hover:text-white">Cancel</a>
+  </div>
+</form>
+
+<%- include('partials/footer') %>

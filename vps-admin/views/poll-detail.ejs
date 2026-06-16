@@ -1,0 +1,69 @@
+<%- include('partials/header', { title: 'Poll Detail', msg, currentPath }) %>
+
+<div class="flex items-center justify-between mb-4">
+  <div>
+    <a href="/polls" class="text-cyan-400 text-sm">← back</a>
+    <h1 class="text-2xl font-bold mt-1">Poll #<%= poll.id %></h1>
+  </div>
+  <div class="flex gap-2">
+    <% if (poll.status !== 'sent' && poll.status !== 'closed') { %>
+      <a href="/polls/<%= poll.id %>/send" class="bg-emerald-600 hover:bg-emerald-500 px-4 py-2 rounded text-sm font-semibold">📤 Send to all</a>
+    <% } %>
+    <a href="/polls/<%= poll.id %>/export" class="bg-slate-700 hover:bg-slate-600 px-4 py-2 rounded text-sm">⬇️ Export CSV</a>
+    <% if (poll.status === 'sent') { %>
+      <form method="post" action="/polls/<%= poll.id %>/close" onsubmit="return confirm('Close this poll?');">
+        <button class="bg-amber-700 hover:bg-amber-600 px-4 py-2 rounded text-sm">🛑 Close</button>
+      </form>
+    <% } %>
+    <form method="post" action="/polls/<%= poll.id %>/delete" onsubmit="return confirm('Delete poll + all votes?');">
+      <button class="bg-rose-700 hover:bg-rose-600 px-4 py-2 rounded text-sm">🗑️ Delete</button>
+    </form>
+  </div>
+</div>
+
+<div class="bg-slate-900 border border-slate-800 p-5 rounded-xl mb-6">
+  <div class="text-xs text-slate-500 mb-1">Question</div>
+  <div class="text-lg font-semibold mb-4"><%= poll.question %></div>
+  <div class="flex gap-4 text-xs text-slate-400 mb-4">
+    <span>Status: <b class="text-slate-200"><%= poll.status %></b></span>
+    <span>Sent: <b class="text-emerald-300"><%= poll.sent_count %></b></span>
+    <span>Failed: <b class="text-rose-300"><%= poll.failed_count %></b></span>
+    <span>Total votes: <b class="text-cyan-300"><%= total %></b></span>
+    <span><%= poll.allows_multiple ? '☑ Multiple' : '○ Single' %></span>
+    <span><%= poll.is_anonymous ? '🕶 Anonymous' : '👤 Tracked' %></span>
+  </div>
+
+  <div class="space-y-2">
+    <% options.forEach(function(opt, i){ var c = counts[i]; var pct = total ? (c*100/total).toFixed(1) : 0; %>
+      <div>
+        <div class="flex justify-between text-sm mb-1">
+          <span><%= opt %></span>
+          <span class="text-slate-400"><b class="text-cyan-300"><%= c %></b> · <%= pct %>%</span>
+        </div>
+        <div class="h-2 bg-slate-800 rounded overflow-hidden">
+          <div class="h-full bg-gradient-to-r from-cyan-500 to-emerald-500" style="width: <%= pct %>%"></div>
+        </div>
+      </div>
+    <% }) %>
+  </div>
+</div>
+
+<h2 class="text-lg font-semibold mb-2">Voters (<%= votes.length %>)</h2>
+<div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+  <table class="w-full text-sm">
+    <thead><tr><th>User ID</th><th>Username</th><th>Picked</th><th>Time</th></tr></thead>
+    <tbody>
+      <% if (!votes.length) { %><tr><td colspan="4" class="text-center text-slate-500 py-6">এখনো কেউ vote দেয়নি।</td></tr><% } %>
+      <% votes.forEach(function(v){ var picks=[]; try{ picks = JSON.parse(v.option_ids).map(function(i){return options[i]||('#'+i);}); }catch(e){} %>
+        <tr>
+          <td class="font-mono text-xs"><%= v.user_id %></td>
+          <td><%= v.username || '-' %></td>
+          <td class="text-cyan-300"><%= picks.join(', ') %></td>
+          <td class="text-xs text-slate-500"><%= new Date(v.voted_at).toLocaleString() %></td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</div>
+
+<%- include('partials/footer') %>

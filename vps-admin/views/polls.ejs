@@ -1,0 +1,50 @@
+<%- include('partials/header', { title: 'Polls', msg, currentPath }) %>
+
+<div class="flex items-center justify-between mb-6">
+  <div>
+    <h1 class="text-2xl font-bold">📊 Polls</h1>
+    <p class="text-sm text-slate-400">User-দের কাছে Telegram native poll পাঠান, vote collect করুন।</p>
+  </div>
+  <a href="/polls/new" class="bg-cyan-600 hover:bg-cyan-500 px-4 py-2 rounded text-sm font-semibold">+ New Poll</a>
+</div>
+
+<% if (!botTokenSet) { %>
+  <div class="bg-rose-900/40 border border-rose-700 text-rose-200 p-4 rounded-xl mb-6 text-sm">
+    ⚠️ <b>BOT_TOKEN missing!</b> <code>vps-admin/.env</code> এ যোগ করুন তারপর <code>pm2 restart nexusx-admin --update-env</code>
+  </div>
+<% } %>
+
+<div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+  <table class="w-full text-sm">
+    <thead>
+      <tr>
+        <th>ID</th><th>Question</th><th>Status</th><th>Sent</th><th>Failed</th><th>Votes</th><th>Created</th><th></th>
+      </tr>
+    </thead>
+    <tbody>
+      <% if (!polls.length) { %>
+        <tr><td colspan="8" class="text-center text-slate-500 py-8">এখনো কোনো poll নেই।</td></tr>
+      <% } %>
+      <% polls.forEach(function(p){ %>
+        <tr>
+          <td class="font-mono text-slate-400">#<%= p.id %></td>
+          <td class="max-w-md truncate"><%= p.question %></td>
+          <td>
+            <% if (p.status==='sent') { %><span class="bg-emerald-900/50 text-emerald-300 px-2 py-0.5 rounded text-xs">sent</span>
+            <% } else if (p.status==='closed') { %><span class="bg-slate-700 text-slate-300 px-2 py-0.5 rounded text-xs">closed</span>
+            <% } else { %><span class="bg-amber-900/50 text-amber-300 px-2 py-0.5 rounded text-xs">draft</span><% } %>
+          </td>
+          <td><%= p.sent_count %></td>
+          <td class="text-rose-400"><%= p.failed_count %></td>
+          <td class="text-cyan-400 font-semibold"><%= p.vote_count %></td>
+          <td class="text-xs text-slate-500"><%= new Date(p.created_at).toLocaleString() %></td>
+          <td class="text-right">
+            <a href="/polls/<%= p.id %>" class="text-cyan-400 hover:underline text-xs">View</a>
+          </td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</div>
+
+<%- include('partials/footer') %>
