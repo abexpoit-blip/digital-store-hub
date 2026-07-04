@@ -24,6 +24,8 @@ try {
     CREATE INDEX IF NOT EXISTS idx_nord_deliv_user ON nord_deliveries(user_id);
     CREATE INDEX IF NOT EXISTS idx_nord_deliv_stock ON nord_deliveries(stock_id);
   `);
+  try { db.exec("ALTER TABLE nord_stock ADD COLUMN email TEXT"); } catch (_) {}
+  db.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_nord_stock_email ON nord_stock(email) WHERE email IS NOT NULL");
 } catch (e) { console.warn('[nord] table init:', e.message); }
 
 const MAX_USES = 3;
