@@ -207,8 +207,20 @@ def patch_store_py():
     src = open(STORE_PY, "r", encoding="utf-8").read()
 
     if MARKER in src:
-        print("[patch] already applied (marker found), skipping.")
+        print("[patch] V2 already applied, skipping.")
         return
+
+    # Upgrade path: strip V1 block if present, then inject V2
+    if V1_MARKER in src:
+        pattern = r'[ \t]*' + re.escape(V1_MARKER) + r'.*?' + re.escape(V1_END) + r'\n'
+        new_src_tmp, n = re.subn(pattern, '', src, count=1, flags=re.DOTALL)
+        if n == 1:
+            src = new_src_tmp
+            print("[patch] V1 block removed — will inject V2")
+        else:
+            print("[warn] V1 marker present but block not matched; aborting to avoid corruption",
+                  file=sys.stderr)
+            sys.exit(4)
 
     # Locate process_vpn_buy function boundaries
     m = re.search(r'^async def process_vpn_buy\b', src, flags=re.MULTILINE)
