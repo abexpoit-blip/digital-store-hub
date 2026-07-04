@@ -80,6 +80,7 @@ app.use('/orders', requireLogin, require('./routes/orders'));
 app.use('/audit', requireLogin, require('./routes/audit'));
 app.use('/status', requireLogin, require('./routes/status'));
 app.use('/polls', requireLogin, require('./routes/polls'));
+app.use('/nord', requireLogin, require('./routes/nord'));
 
 // 404
 app.use((req, res) => res.status(404).render('error', { message: 'Page not found' }));
