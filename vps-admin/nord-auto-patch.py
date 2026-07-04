@@ -18,14 +18,17 @@ from datetime import datetime
 
 STORE_PY = "/root/store.py"
 STORE_DB = "/root/store.db"
-MARKER = "# === NORD_AUTO_DELIVER_V2 ==="
-V1_MARKER = "# === NORD_AUTO_DELIVER_V1 ==="
-V1_END = "# === END NORD_AUTO_DELIVER_V1 ==="
+MARKER = "# === NORD_AUTO_DELIVER_V3 ==="
+OLD_MARKERS = [
+    ("# === NORD_AUTO_DELIVER_V1 ===", "# === END NORD_AUTO_DELIVER_V1 ==="),
+    ("# === NORD_AUTO_DELIVER_V2 ===", "# === END NORD_AUTO_DELIVER_V2 ==="),
+]
 
 INJECT_BLOCK = r'''
-    # === NORD_AUTO_DELIVER_V2 ===
+    # === NORD_AUTO_DELIVER_V3 ===
     # NordVPN auto-delivery: 1 account -> max 3 users, no repeat per user.
-    # V2 adds low-stock warning to admins (rate-limited, 1h per pkg).
+    # V3: structured delivery format (Email / Password) + low-stock warning.
+    import json as _json
     if vpn_id == 'nord':
         try:
             _nord_row = conn.execute(
@@ -85,20 +88,39 @@ INJECT_BLOCK = r'''
                 conn.close()
                 return await c.message.answer(f"❌ Auto-delivery ব্যর্থ: {_e}\nAdmin কে জানান।")
 
-            _emoji = VPN_EMOJIS.get(vpn_id, "⚛️")
-            _user_msg = (
-                f"🎉 **আপনার VPN অর্ডার ডেলিভারি সম্পন্ন হয়েছে!** 🎉\n"
-                f"━━━━━━━━━━━━━━━━━━━━\n"
-                f"{_emoji} **ব্র্যান্ড:** {vpn_name}\n"
-                f"📦 **প্যাকেজ:** {pkg_name}\n"
-                f"⚡ **Auto-Delivered (Instant)**\n"
-                f"━━━━━━━━━━━━━━━━━━━━\n"
-                f"🔐 **আপনার লগইন ডিটেইলস:**\n"
-                f"```text\n{_vpn_info}\n```\n"
-                f"━━━━━━━━━━━━━━━━━━━━\n"
-                f"💡 *(কপি করতে বক্সের উপর ক্লিক করুন)*\n"
-                f"🆔 Order: `{_order_id}`"
-            )
+            # Parse structured data (V3) or fallback to raw text (legacy rows)
+            _email = ""
+            _password = ""
+            try:
+                _d = _json.loads(_vpn_info)
+                _email = str(_d.get("email", "")).strip()
+                _password = str(_d.get("password", "")).strip()
+            except Exception:
+                _email = ""
+                _password = ""
+            if _email and _password:
+                _user_msg = (
+                    f"🔰 Nord Premium VPN Account 🔰\n\n"
+                    f"📧 Email: `{_email}`\n"
+                    f"🔑 Password: `{_password}`\n\n"
+                    f"📦 Package: {pkg_name}\n"
+                    f"⚠️ পাসওয়ার্ড বা কোনো তথ্য পরিবর্তন করবেন না।\n"
+                    f"🛠️ যেকোনো সমস্যায় দ্রুত নক দিন, সাপোর্ট পাবেন।\n"
+                    f"💙 ধন্যবাদ!\n\n"
+                    f"🆔 Order: `{_order_id}`"
+                )
+            else:
+                _emoji = VPN_EMOJIS.get(vpn_id, "⚛️")
+                _user_msg = (
+                    f"🎉 **আপনার VPN অর্ডার ডেলিভারি সম্পন্ন হয়েছে!** 🎉\n"
+                    f"━━━━━━━━━━━━━━━━━━━━\n"
+                    f"{_emoji} **ব্র্যান্ড:** {vpn_name}\n"
+                    f"📦 **প্যাকেজ:** {pkg_name}\n"
+                    f"━━━━━━━━━━━━━━━━━━━━\n"
+                    f"🔐 **আপনার লগইন ডিটেইলস:**\n"
+                    f"```text\n{_vpn_info}\n```\n"
+                    f"🆔 Order: `{_order_id}`"
+                )
             try:
                 await c.message.answer(_user_msg, parse_mode="Markdown")
             except Exception:
@@ -163,7 +185,7 @@ INJECT_BLOCK = r'''
                 try: _wconn.close()
                 except: pass
             return
-    # === END NORD_AUTO_DELIVER_V2 ===
+    # === END NORD_AUTO_DELIVER_V3 ===
 
 '''
 
@@ -194,9 +216,19 @@ def ensure_tables():
         CREATE INDEX IF NOT EXISTS idx_nord_deliv_stock
             ON nord_deliveries(stock_id);
     """)
+    # Add email column (V3) — safe if already present
+    try:
+        conn.execute("ALTER TABLE nord_stock ADD COLUMN email TEXT")
+    except sqlite3.OperationalError:
+        pass  # column already exists
+    # Unique on non-null email (prevents duplicate same-email account)
+    conn.execute(
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_nord_stock_email "
+        "ON nord_stock(email) WHERE email IS NOT NULL"
+    )
     conn.commit()
     conn.close()
-    print("[db] nord_stock + nord_deliveries tables ready")
+    print("[db] nord_stock (+email) + nord_deliveries tables ready")
 
 
 def patch_store_py():
@@ -207,20 +239,21 @@ def patch_store_py():
     src = open(STORE_PY, "r", encoding="utf-8").read()
 
     if MARKER in src:
-        print("[patch] V2 already applied, skipping.")
+        print("[patch] V3 already applied, skipping.")
         return
 
-    # Upgrade path: strip V1 block if present, then inject V2
-    if V1_MARKER in src:
-        pattern = r'[ \t]*' + re.escape(V1_MARKER) + r'.*?' + re.escape(V1_END) + r'\n'
-        new_src_tmp, n = re.subn(pattern, '', src, count=1, flags=re.DOTALL)
-        if n == 1:
-            src = new_src_tmp
-            print("[patch] V1 block removed — will inject V2")
-        else:
-            print("[warn] V1 marker present but block not matched; aborting to avoid corruption",
-                  file=sys.stderr)
-            sys.exit(4)
+    # Upgrade path: strip any older version blocks, then inject V3
+    for old_start, old_end in OLD_MARKERS:
+        if old_start in src:
+            pattern = r'[ \t]*' + re.escape(old_start) + r'.*?' + re.escape(old_end) + r'\n'
+            new_src_tmp, n = re.subn(pattern, '', src, count=1, flags=re.DOTALL)
+            if n == 1:
+                src = new_src_tmp
+                print(f"[patch] removed old block: {old_start}")
+            else:
+                print(f"[warn] {old_start} present but block not matched; aborting",
+                      file=sys.stderr)
+                sys.exit(4)
 
     # Locate process_vpn_buy function boundaries
     m = re.search(r'^async def process_vpn_buy\b', src, flags=re.MULTILINE)

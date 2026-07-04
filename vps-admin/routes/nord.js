@@ -24,6 +24,8 @@ try {
     CREATE INDEX IF NOT EXISTS idx_nord_deliv_user ON nord_deliveries(user_id);
     CREATE INDEX IF NOT EXISTS idx_nord_deliv_stock ON nord_deliveries(stock_id);
   `);
+  try { db.exec("ALTER TABLE nord_stock ADD COLUMN email TEXT"); } catch (_) {}
+  db.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_nord_stock_email ON nord_stock(email) WHERE email IS NOT NULL");
 } catch (e) { console.warn('[nord] table init:', e.message); }
 
 const MAX_USES = 3;
@@ -62,7 +64,7 @@ router.get('/', (req, res) => {
   let items = [];
   if (activePkg) {
     items = db.prepare(
-      `SELECT s.id, s.pkg_id, s.data, s.delivered_count, s.created_at,
+      `SELECT s.id, s.pkg_id, s.data, s.email, s.delivered_count, s.created_at,
               (SELECT COUNT(*) FROM nord_deliveries d WHERE d.stock_id = s.id) AS delivered_users
          FROM nord_stock s
         WHERE s.pkg_id = ?
@@ -83,27 +85,78 @@ router.get('/', (req, res) => {
   });
 });
 
-// Bulk add accounts (one per line) for a pkg_id
+// Parse pasted blocks into {email, password} records.
+// Accepted format per block (blank line separates blocks):
+//   Nord                <- optional header, ignored
+//   email@domain.com
+//   passwordText
+// A single-line block "email:password" or "email|password" is also supported.
+function parseNordBlocks(raw) {
+  const text = (raw || '').replace(/\r/g, '').trim();
+  if (!text) return [];
+  const blocks = text.split(/\n\s*\n+/); // separated by blank line(s)
+  const emailRe = /[\w.+-]+@[\w-]+\.[\w.-]+/;
+  const out = [];
+  for (const b of blocks) {
+    const lines = b.split('\n').map(s => s.trim()).filter(Boolean)
+      .filter(l => l.toLowerCase() !== 'nord');
+    if (!lines.length) continue;
+    let email = '', password = '';
+    // single-line email:pass or email|pass
+    if (lines.length === 1) {
+      const m = lines[0].match(/^([\w.+-]+@[\w-]+\.[\w.-]+)[\s:|]+(.+)$/);
+      if (m) { email = m[1]; password = m[2].trim(); }
+    } else {
+      // multi-line: pick the email line, rest = password
+      const emailIdx = lines.findIndex(l => emailRe.test(l));
+      if (emailIdx >= 0) {
+        email = (lines[emailIdx].match(emailRe) || [''])[0];
+        password = lines.filter((_, i) => i !== emailIdx).join(' ').trim();
+      }
+    }
+    if (email && password) out.push({ email: email.toLowerCase(), password });
+  }
+  return out;
+}
+
+// Bulk add accounts for a pkg_id (new block-format parser + dedup by email)
 router.post('/add', (req, res) => {
   const pkg_id = (req.body.pkg_id || '').trim().toLowerCase();
-  const raw = (req.body.accounts || '').replace(/\r/g, '');
   if (!pkg_id) return res.redirect('/nord?msg=' + encodeURIComponent('❌ Package select করুন'));
-  const lines = raw.split('\n').map(s => s.trim()).filter(Boolean);
-  if (!lines.length) return res.redirect('/nord?pkg=' + pkg_id + '&msg=' + encodeURIComponent('❌ Account লাইন খালি'));
+
+  const records = parseNordBlocks(req.body.accounts || '');
+  if (!records.length) {
+    return res.redirect('/nord?pkg=' + pkg_id + '&msg=' +
+      encodeURIComponent('❌ কোনো valid account পাওয়া যায়নি (email + password লাগবে)'));
+  }
 
   const now = Math.floor(Date.now() / 1000);
-  const stmt = db.prepare(
-    'INSERT INTO nord_stock (pkg_id, data, delivered_count, created_at) VALUES (?, ?, 0, ?)'
+  const insert = db.prepare(
+    'INSERT INTO nord_stock (pkg_id, data, email, delivered_count, created_at) VALUES (?, ?, ?, 0, ?)'
   );
+  let inserted = 0, skipped = 0;
+  const dupEmails = [];
   const tx = db.transaction((rows) => {
-    for (const r of rows) stmt.run(pkg_id, r, now);
-    // Reset low-stock alert flag so next depletion re-triggers warning
-    db.prepare("DELETE FROM config WHERE key = ?").run(`nord_last_alert_${pkg_id}`);
+    for (const r of rows) {
+      try {
+        insert.run(pkg_id, JSON.stringify({ email: r.email, password: r.password }), r.email, now);
+        inserted++;
+      } catch (e) {
+        if (e && /UNIQUE|unique/.test(String(e.message))) {
+          skipped++; dupEmails.push(r.email);
+        } else { throw e; }
+      }
+    }
+    if (inserted > 0) {
+      db.prepare("DELETE FROM config WHERE key = ?").run(`nord_last_alert_${pkg_id}`);
+    }
   });
-  tx(lines);
+  tx(records);
 
-  logAudit('admin', 'nord_stock_add', `pkg=${pkg_id} count=${lines.length}`);
-  res.redirect('/nord?pkg=' + pkg_id + '&msg=' + encodeURIComponent(`✅ ${lines.length} account যোগ হয়েছে (${fmtPkg(pkg_id)})`));
+  logAudit('admin', 'nord_stock_add', `pkg=${pkg_id} added=${inserted} dup=${skipped}`);
+  let msg = `✅ ${inserted} account যোগ হয়েছে (${fmtPkg(pkg_id)})`;
+  if (skipped > 0) msg += ` · ⏭ ${skipped} duplicate skip: ${dupEmails.slice(0,3).join(', ')}${dupEmails.length>3?'...':''}`;
+  res.redirect('/nord?pkg=' + pkg_id + '&msg=' + encodeURIComponent(msg));
 });
 
 // Update low-stock warning threshold

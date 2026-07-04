@@ -37,11 +37,14 @@
   <div class="text-sm font-semibold mb-2">➕ Add accounts for <span class="text-cyan-400"><%= activePkg %></span></div>
   <form method="post" action="/nord/add" class="space-y-2">
     <input type="hidden" name="pkg_id" value="<%= activePkg %>"/>
-    <textarea name="accounts" rows="6" required
-      placeholder="প্রতি লাইনে একটি account&#10;email:pass&#10;email2:pass2"
+    <textarea name="accounts" rows="10" required
+      placeholder="Nord&#10;&#10;meadocbpi2@anogz.com&#10;@VpN18962VpN#&#10;&#10;Nord&#10;&#10;user2@mail.com&#10;PassWord2!"
       class="w-full bg-slate-950 border border-slate-700 rounded p-3 font-mono text-xs"></textarea>
     <div class="flex items-center justify-between">
-      <div class="text-xs text-slate-500">প্রতি account সর্বোচ্চ <%= MAX_USES %> জনকে auto-deliver হবে।</div>
+      <div class="text-xs text-slate-500">
+        📝 প্রতি account: <b>Nord</b> (optional) → খালি লাইন → <b>email</b> → <b>password</b> → খালি লাইন → পরের account।
+        Duplicate email skip হবে। Max <%= MAX_USES %> user per account.
+      </div>
       <button class="bg-cyan-600 hover:bg-cyan-500 px-4 py-2 rounded text-sm font-medium">Add</button>
     </div>
   </form>
@@ -52,18 +55,22 @@
   <table class="w-full text-sm">
     <thead>
       <tr>
-        <th>ID</th><th>Account Data</th><th>Used</th><th>Status</th><th>Delete</th>
+        <th>ID</th><th>Email</th><th>Password</th><th>Used</th><th>Status</th><th>Delete</th>
       </tr>
     </thead>
     <tbody>
       <% if (!items.length) { %>
-        <tr><td colspan="5" class="text-center text-slate-500 py-6">কোনো account নেই।</td></tr>
+        <tr><td colspan="6" class="text-center text-slate-500 py-6">কোনো account নেই।</td></tr>
       <% } %>
       <% items.forEach(function(it){
-           const exhausted = it.delivered_count >= MAX_USES; %>
+           const exhausted = it.delivered_count >= MAX_USES;
+           let email = it.email || '', pass = '';
+           try { const d = JSON.parse(it.data); pass = d.password || ''; if (!email) email = d.email || ''; } catch(_) { pass = it.data; }
+      %>
         <tr class="<%= exhausted ? 'opacity-60' : '' %>">
           <td class="font-mono text-slate-500">#<%= it.id %></td>
-          <td class="font-mono text-xs break-all max-w-md"><%= it.data %></td>
+          <td class="font-mono text-xs break-all"><%= email || '—' %></td>
+          <td class="font-mono text-xs break-all max-w-xs"><%= pass %></td>
           <td>
             <span class="<%= exhausted ? 'text-rose-400' : 'text-emerald-400' %>">
               <%= it.delivered_count %>/<%= MAX_USES %>
