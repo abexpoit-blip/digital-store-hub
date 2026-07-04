@@ -25,9 +25,10 @@ OLD_MARKERS = [
 ]
 
 INJECT_BLOCK = r'''
-    # === NORD_AUTO_DELIVER_V2 ===
+    # === NORD_AUTO_DELIVER_V3 ===
     # NordVPN auto-delivery: 1 account -> max 3 users, no repeat per user.
-    # V2 adds low-stock warning to admins (rate-limited, 1h per pkg).
+    # V3: structured delivery format (Email / Password) + low-stock warning.
+    import json as _json
     if vpn_id == 'nord':
         try:
             _nord_row = conn.execute(
