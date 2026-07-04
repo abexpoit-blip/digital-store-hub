@@ -6,6 +6,15 @@
   একই user একই account দুইবার পাবে না। Total: <b><%= totalAccounts %></b> accounts, delivered <b><%= totalDelivered %></b> বার।
 </p>
 
+<!-- Warning threshold setting -->
+<form method="post" action="/nord/threshold" class="flex items-center gap-2 mb-4 bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 w-fit">
+  <span class="text-xs text-slate-400">⚠️ Stock LOW warning trigger হবে যখন কোনো package এর slots ≤</span>
+  <input name="threshold" type="number" min="0" max="999" value="<%= threshold %>"
+         class="w-20 bg-slate-950 border border-slate-700 rounded px-2 py-1 text-sm"/>
+  <button class="bg-slate-700 hover:bg-slate-600 px-3 py-1 rounded text-xs">Save</button>
+  <span class="text-xs text-slate-500">(1 ঘন্টায় max 1 alert per pkg)</span>
+</form>
+
 <!-- Package summary tabs -->
 <div class="flex flex-wrap gap-2 mb-4">
   <% if (!packages.length) { %>
