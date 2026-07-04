@@ -73,10 +73,12 @@ router.get('/', (req, res) => {
 
   const totalAccounts = db.prepare('SELECT COUNT(*) c FROM nord_stock').get().c;
   const totalDelivered = db.prepare('SELECT COUNT(*) c FROM nord_deliveries').get().c;
+  const thrRow = db.prepare("SELECT value FROM config WHERE key='nord_warn_threshold'").get();
+  const threshold = thrRow ? parseInt(thrRow.value, 10) : 3;
 
   res.render('nord', {
     packages, summary, activePkg, items,
-    totalAccounts, totalDelivered, MAX_USES,
+    totalAccounts, totalDelivered, MAX_USES, threshold,
     msg: req.query.msg || null
   });
 });
