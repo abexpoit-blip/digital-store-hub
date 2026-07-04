@@ -119,8 +119,51 @@ INJECT_BLOCK = r'''
             for _a in _admins:
                 try: await bot.send_message(_a[0], _admin_notify)
                 except: pass
+
+            # --- Low-stock warning (rate-limited to 1 alert per pkg per hour) ---
+            try:
+                _wconn = sqlite3.connect('/root/store.db')
+                _remaining = _wconn.execute(
+                    "SELECT COALESCE(SUM(3 - delivered_count), 0) FROM nord_stock "
+                    "WHERE pkg_id = ? AND delivered_count < 3",
+                    (pkg_id,),
+                ).fetchone()[0]
+                _thr_row = _wconn.execute(
+                    "SELECT value FROM config WHERE key = 'nord_warn_threshold'"
+                ).fetchone()
+                _thr = int(_thr_row[0]) if _thr_row else 3
+                if _remaining <= _thr:
+                    _last_row = _wconn.execute(
+                        "SELECT value FROM config WHERE key = ?",
+                        (f"nord_last_alert_{pkg_id}",),
+                    ).fetchone()
+                    _last = int(_last_row[0]) if _last_row else 0
+                    if _now_ts - _last >= 3600:
+                        _wconn.execute(
+                            "INSERT OR REPLACE INTO config (key, value) VALUES (?, ?)",
+                            (f"nord_last_alert_{pkg_id}", str(_now_ts)),
+                        )
+                        _wconn.commit()
+                        _wconn.close()
+                        _lvl = "🚨 OUT OF STOCK" if _remaining <= 0 else "⚠️ Stock LOW"
+                        _warn = (
+                            f"{_lvl} — Nord VPN\n"
+                            f"📦 Package: {pkg_name} ({pkg_id})\n"
+                            f"🔻 Remaining slots: {_remaining}\n"
+                            f"➕ Panel: /nord এ গিয়ে stock refill করুন।"
+                        )
+                        for _a in _admins:
+                            try: await bot.send_message(_a[0], _warn)
+                            except: pass
+                    else:
+                        _wconn.close()
+                else:
+                    _wconn.close()
+            except Exception:
+                try: _wconn.close()
+                except: pass
             return
-    # === END NORD_AUTO_DELIVER_V1 ===
+    # === END NORD_AUTO_DELIVER_V2 ===
 
 '''
 
