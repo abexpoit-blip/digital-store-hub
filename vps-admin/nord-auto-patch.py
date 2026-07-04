@@ -88,20 +88,39 @@ INJECT_BLOCK = r'''
                 conn.close()
                 return await c.message.answer(f"❌ Auto-delivery ব্যর্থ: {_e}\nAdmin কে জানান।")
 
-            _emoji = VPN_EMOJIS.get(vpn_id, "⚛️")
-            _user_msg = (
-                f"🎉 **আপনার VPN অর্ডার ডেলিভারি সম্পন্ন হয়েছে!** 🎉\n"
-                f"━━━━━━━━━━━━━━━━━━━━\n"
-                f"{_emoji} **ব্র্যান্ড:** {vpn_name}\n"
-                f"📦 **প্যাকেজ:** {pkg_name}\n"
-                f"⚡ **Auto-Delivered (Instant)**\n"
-                f"━━━━━━━━━━━━━━━━━━━━\n"
-                f"🔐 **আপনার লগইন ডিটেইলস:**\n"
-                f"```text\n{_vpn_info}\n```\n"
-                f"━━━━━━━━━━━━━━━━━━━━\n"
-                f"💡 *(কপি করতে বক্সের উপর ক্লিক করুন)*\n"
-                f"🆔 Order: `{_order_id}`"
-            )
+            # Parse structured data (V3) or fallback to raw text (legacy rows)
+            _email = ""
+            _password = ""
+            try:
+                _d = _json.loads(_vpn_info)
+                _email = str(_d.get("email", "")).strip()
+                _password = str(_d.get("password", "")).strip()
+            except Exception:
+                _email = ""
+                _password = ""
+            if _email and _password:
+                _user_msg = (
+                    f"🔰 Nord Premium VPN Account 🔰\n\n"
+                    f"📧 Email: `{_email}`\n"
+                    f"🔑 Password: `{_password}`\n\n"
+                    f"📦 Package: {pkg_name}\n"
+                    f"⚠️ পাসওয়ার্ড বা কোনো তথ্য পরিবর্তন করবেন না।\n"
+                    f"🛠️ যেকোনো সমস্যায় দ্রুত নক দিন, সাপোর্ট পাবেন।\n"
+                    f"💙 ধন্যবাদ!\n\n"
+                    f"🆔 Order: `{_order_id}`"
+                )
+            else:
+                _emoji = VPN_EMOJIS.get(vpn_id, "⚛️")
+                _user_msg = (
+                    f"🎉 **আপনার VPN অর্ডার ডেলিভারি সম্পন্ন হয়েছে!** 🎉\n"
+                    f"━━━━━━━━━━━━━━━━━━━━\n"
+                    f"{_emoji} **ব্র্যান্ড:** {vpn_name}\n"
+                    f"📦 **প্যাকেজ:** {pkg_name}\n"
+                    f"━━━━━━━━━━━━━━━━━━━━\n"
+                    f"🔐 **আপনার লগইন ডিটেইলস:**\n"
+                    f"```text\n{_vpn_info}\n```\n"
+                    f"🆔 Order: `{_order_id}`"
+                )
             try:
                 await c.message.answer(_user_msg, parse_mode="Markdown")
             except Exception:
