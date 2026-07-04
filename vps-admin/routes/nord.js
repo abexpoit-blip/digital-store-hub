@@ -28,7 +28,7 @@ try {
   db.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_nord_stock_email ON nord_stock(email) WHERE email IS NOT NULL");
 } catch (e) { console.warn('[nord] table init:', e.message); }
 
-const MAX_USES = 3;
+const MAX_USES = 2;
 
 function loadPackages() {
   try {
