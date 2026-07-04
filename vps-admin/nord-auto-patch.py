@@ -18,11 +18,14 @@ from datetime import datetime
 
 STORE_PY = "/root/store.py"
 STORE_DB = "/root/store.db"
-MARKER = "# === NORD_AUTO_DELIVER_V1 ==="
+MARKER = "# === NORD_AUTO_DELIVER_V2 ==="
+V1_MARKER = "# === NORD_AUTO_DELIVER_V1 ==="
+V1_END = "# === END NORD_AUTO_DELIVER_V1 ==="
 
 INJECT_BLOCK = r'''
-    # === NORD_AUTO_DELIVER_V1 ===
+    # === NORD_AUTO_DELIVER_V2 ===
     # NordVPN auto-delivery: 1 account -> max 3 users, no repeat per user.
+    # V2 adds low-stock warning to admins (rate-limited, 1h per pkg).
     if vpn_id == 'nord':
         try:
             _nord_row = conn.execute(
@@ -116,8 +119,51 @@ INJECT_BLOCK = r'''
             for _a in _admins:
                 try: await bot.send_message(_a[0], _admin_notify)
                 except: pass
+
+            # --- Low-stock warning (rate-limited to 1 alert per pkg per hour) ---
+            try:
+                _wconn = sqlite3.connect('/root/store.db')
+                _remaining = _wconn.execute(
+                    "SELECT COALESCE(SUM(3 - delivered_count), 0) FROM nord_stock "
+                    "WHERE pkg_id = ? AND delivered_count < 3",
+                    (pkg_id,),
+                ).fetchone()[0]
+                _thr_row = _wconn.execute(
+                    "SELECT value FROM config WHERE key = 'nord_warn_threshold'"
+                ).fetchone()
+                _thr = int(_thr_row[0]) if _thr_row else 3
+                if _remaining <= _thr:
+                    _last_row = _wconn.execute(
+                        "SELECT value FROM config WHERE key = ?",
+                        (f"nord_last_alert_{pkg_id}",),
+                    ).fetchone()
+                    _last = int(_last_row[0]) if _last_row else 0
+                    if _now_ts - _last >= 3600:
+                        _wconn.execute(
+                            "INSERT OR REPLACE INTO config (key, value) VALUES (?, ?)",
+                            (f"nord_last_alert_{pkg_id}", str(_now_ts)),
+                        )
+                        _wconn.commit()
+                        _wconn.close()
+                        _lvl = "🚨 OUT OF STOCK" if _remaining <= 0 else "⚠️ Stock LOW"
+                        _warn = (
+                            f"{_lvl} — Nord VPN\n"
+                            f"📦 Package: {pkg_name} ({pkg_id})\n"
+                            f"🔻 Remaining slots: {_remaining}\n"
+                            f"➕ Panel: /nord এ গিয়ে stock refill করুন।"
+                        )
+                        for _a in _admins:
+                            try: await bot.send_message(_a[0], _warn)
+                            except: pass
+                    else:
+                        _wconn.close()
+                else:
+                    _wconn.close()
+            except Exception:
+                try: _wconn.close()
+                except: pass
             return
-    # === END NORD_AUTO_DELIVER_V1 ===
+    # === END NORD_AUTO_DELIVER_V2 ===
 
 '''
 
@@ -161,8 +207,20 @@ def patch_store_py():
     src = open(STORE_PY, "r", encoding="utf-8").read()
 
     if MARKER in src:
-        print("[patch] already applied (marker found), skipping.")
+        print("[patch] V2 already applied, skipping.")
         return
+
+    # Upgrade path: strip V1 block if present, then inject V2
+    if V1_MARKER in src:
+        pattern = r'[ \t]*' + re.escape(V1_MARKER) + r'.*?' + re.escape(V1_END) + r'\n'
+        new_src_tmp, n = re.subn(pattern, '', src, count=1, flags=re.DOTALL)
+        if n == 1:
+            src = new_src_tmp
+            print("[patch] V1 block removed — will inject V2")
+        else:
+            print("[warn] V1 marker present but block not matched; aborting to avoid corruption",
+                  file=sys.stderr)
+            sys.exit(4)
 
     # Locate process_vpn_buy function boundaries
     m = re.search(r'^async def process_vpn_buy\b', src, flags=re.MULTILINE)
