@@ -18,9 +18,11 @@ from datetime import datetime
 
 STORE_PY = "/root/store.py"
 STORE_DB = "/root/store.db"
-MARKER = "# === NORD_AUTO_DELIVER_V2 ==="
-V1_MARKER = "# === NORD_AUTO_DELIVER_V1 ==="
-V1_END = "# === END NORD_AUTO_DELIVER_V1 ==="
+MARKER = "# === NORD_AUTO_DELIVER_V3 ==="
+OLD_MARKERS = [
+    ("# === NORD_AUTO_DELIVER_V1 ===", "# === END NORD_AUTO_DELIVER_V1 ==="),
+    ("# === NORD_AUTO_DELIVER_V2 ===", "# === END NORD_AUTO_DELIVER_V2 ==="),
+]
 
 INJECT_BLOCK = r'''
     # === NORD_AUTO_DELIVER_V2 ===
