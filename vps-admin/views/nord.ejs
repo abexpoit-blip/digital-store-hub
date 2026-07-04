@@ -55,18 +55,22 @@
   <table class="w-full text-sm">
     <thead>
       <tr>
-        <th>ID</th><th>Account Data</th><th>Used</th><th>Status</th><th>Delete</th>
+        <th>ID</th><th>Email</th><th>Password</th><th>Used</th><th>Status</th><th>Delete</th>
       </tr>
     </thead>
     <tbody>
       <% if (!items.length) { %>
-        <tr><td colspan="5" class="text-center text-slate-500 py-6">কোনো account নেই।</td></tr>
+        <tr><td colspan="6" class="text-center text-slate-500 py-6">কোনো account নেই।</td></tr>
       <% } %>
       <% items.forEach(function(it){
-           const exhausted = it.delivered_count >= MAX_USES; %>
+           const exhausted = it.delivered_count >= MAX_USES;
+           let email = it.email || '', pass = '';
+           try { const d = JSON.parse(it.data); pass = d.password || ''; if (!email) email = d.email || ''; } catch(_) { pass = it.data; }
+      %>
         <tr class="<%= exhausted ? 'opacity-60' : '' %>">
           <td class="font-mono text-slate-500">#<%= it.id %></td>
-          <td class="font-mono text-xs break-all max-w-md"><%= it.data %></td>
+          <td class="font-mono text-xs break-all"><%= email || '—' %></td>
+          <td class="font-mono text-xs break-all max-w-xs"><%= pass %></td>
           <td>
             <span class="<%= exhausted ? 'text-rose-400' : 'text-emerald-400' %>">
               <%= it.delivered_count %>/<%= MAX_USES %>
