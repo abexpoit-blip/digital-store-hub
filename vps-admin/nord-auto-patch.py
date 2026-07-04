@@ -23,8 +23,9 @@ V1_MARKER = "# === NORD_AUTO_DELIVER_V1 ==="
 V1_END = "# === END NORD_AUTO_DELIVER_V1 ==="
 
 INJECT_BLOCK = r'''
-    # === NORD_AUTO_DELIVER_V1 ===
+    # === NORD_AUTO_DELIVER_V2 ===
     # NordVPN auto-delivery: 1 account -> max 3 users, no repeat per user.
+    # V2 adds low-stock warning to admins (rate-limited, 1h per pkg).
     if vpn_id == 'nord':
         try:
             _nord_row = conn.execute(
