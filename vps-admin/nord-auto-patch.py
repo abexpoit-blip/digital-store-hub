@@ -27,15 +27,15 @@ OLD_MARKERS = [
 MAX_PER_ACCOUNT = 2  # 1 account -> max 2 users
 
 INJECT_BLOCK = r'''
-    # === NORD_AUTO_DELIVER_V3 ===
-    # NordVPN auto-delivery: 1 account -> max 3 users, no repeat per user.
-    # V3: structured delivery format (Email / Password) + low-stock warning.
+    # === NORD_AUTO_DELIVER_V4 ===
+    # NordVPN auto-delivery: 1 account -> max 2 users, no repeat per user.
+    # V4: max=2, official NordVPN shield icon, dynamic package icon.
     import json as _json
     if vpn_id == 'nord':
         try:
             _nord_row = conn.execute(
                 """SELECT id, data FROM nord_stock
-                   WHERE pkg_id = ? AND delivered_count < 3
+                   WHERE pkg_id = ? AND delivered_count < 2
                      AND id NOT IN (SELECT stock_id FROM nord_deliveries WHERE user_id = ?)
                    ORDER BY delivered_count ASC, id ASC LIMIT 1""",
                 (pkg_id, c.from_user.id),
@@ -48,6 +48,16 @@ INJECT_BLOCK = r'''
             _now_ts = int(datetime.now().timestamp())
             _cur_time = datetime.now(timezone(timedelta(hours=6))).strftime("%I:%M %p")
             _uname = f"@{c.from_user.username}" if c.from_user.username else f"User {c.from_user.id}"
+            # Dynamic package icon based on duration
+            _pkg_lower = (str(pkg_name) + " " + str(pkg_id)).lower()
+            if '7' in _pkg_lower and 'day' in _pkg_lower:
+                _pkg_icon = "⏱️"
+            elif '30' in _pkg_lower or 'month' in _pkg_lower:
+                _pkg_icon = "📅"
+            elif 'year' in _pkg_lower or '365' in _pkg_lower:
+                _pkg_icon = "🗓️"
+            else:
+                _pkg_icon = "📦"
             try:
                 conn.execute("BEGIN IMMEDIATE")
                 _upd = conn.execute(
@@ -57,7 +67,7 @@ INJECT_BLOCK = r'''
                 if _upd.rowcount != 1:
                     raise Exception("Insufficient balance during auto-deliver")
                 conn.execute(
-                    "UPDATE nord_stock SET delivered_count = delivered_count + 1 WHERE id = ? AND delivered_count < 3",
+                    "UPDATE nord_stock SET delivered_count = delivered_count + 1 WHERE id = ? AND delivered_count < 2",
                     (_stock_id,),
                 )
                 conn.execute(
@@ -90,7 +100,7 @@ INJECT_BLOCK = r'''
                 conn.close()
                 return await c.message.answer(f"❌ Auto-delivery ব্যর্থ: {_e}\nAdmin কে জানান।")
 
-            # Parse structured data (V3) or fallback to raw text (legacy rows)
+            # Parse structured data (V3+) or fallback to raw text (legacy rows)
             _email = ""
             _password = ""
             try:
@@ -102,22 +112,21 @@ INJECT_BLOCK = r'''
                 _password = ""
             if _email and _password:
                 _user_msg = (
-                    f"🔰 Nord Premium VPN Account 🔰\n\n"
+                    f"🛡️ NordVPN Premium Account 🛡️\n\n"
                     f"📧 Email: `{_email}`\n"
                     f"🔑 Password: `{_password}`\n\n"
-                    f"📦 Package: {pkg_name}\n"
+                    f"{_pkg_icon} Package: {pkg_name}\n"
                     f"⚠️ পাসওয়ার্ড বা কোনো তথ্য পরিবর্তন করবেন না।\n"
                     f"🛠️ যেকোনো সমস্যায় দ্রুত নক দিন, সাপোর্ট পাবেন।\n"
                     f"💙 ধন্যবাদ!\n\n"
                     f"🆔 Order: `{_order_id}`"
                 )
             else:
-                _emoji = VPN_EMOJIS.get(vpn_id, "⚛️")
                 _user_msg = (
                     f"🎉 **আপনার VPN অর্ডার ডেলিভারি সম্পন্ন হয়েছে!** 🎉\n"
                     f"━━━━━━━━━━━━━━━━━━━━\n"
-                    f"{_emoji} **ব্র্যান্ড:** {vpn_name}\n"
-                    f"📦 **প্যাকেজ:** {pkg_name}\n"
+                    f"🛡️ **ব্র্যান্ড:** {vpn_name}\n"
+                    f"{_pkg_icon} **প্যাকেজ:** {pkg_name}\n"
                     f"━━━━━━━━━━━━━━━━━━━━\n"
                     f"🔐 **আপনার লগইন ডিটেইলস:**\n"
                     f"```text\n{_vpn_info}\n```\n"
@@ -135,9 +144,9 @@ INJECT_BLOCK = r'''
             conn.close()
             _udisp = f"@{c.from_user.username}" if c.from_user.username else "No Username"
             _admin_notify = (
-                f"⚡ **AUTO-DELIVERED (Nord VPN)**\n"
+                f"⚡ **AUTO-DELIVERED (🛡️ NordVPN)**\n"
                 f"👤 {c.from_user.first_name} | {_udisp} | `{c.from_user.id}`\n"
-                f"📦 {pkg_name} | 💰 {price}৳\n"
+                f"{_pkg_icon} {pkg_name} | 💰 {price}৳\n"
                 f"🆔 Order: `{_order_id}` | Stock #{_stock_id}"
             )
             for _a in _admins:
@@ -148,8 +157,8 @@ INJECT_BLOCK = r'''
             try:
                 _wconn = sqlite3.connect('/root/store.db')
                 _remaining = _wconn.execute(
-                    "SELECT COALESCE(SUM(3 - delivered_count), 0) FROM nord_stock "
-                    "WHERE pkg_id = ? AND delivered_count < 3",
+                    "SELECT COALESCE(SUM(2 - delivered_count), 0) FROM nord_stock "
+                    "WHERE pkg_id = ? AND delivered_count < 2",
                     (pkg_id,),
                 ).fetchone()[0]
                 _thr_row = _wconn.execute(
@@ -171,8 +180,8 @@ INJECT_BLOCK = r'''
                         _wconn.close()
                         _lvl = "🚨 OUT OF STOCK" if _remaining <= 0 else "⚠️ Stock LOW"
                         _warn = (
-                            f"{_lvl} — Nord VPN\n"
-                            f"📦 Package: {pkg_name} ({pkg_id})\n"
+                            f"{_lvl} — 🛡️ NordVPN\n"
+                            f"{_pkg_icon} Package: {pkg_name} ({pkg_id})\n"
                             f"🔻 Remaining slots: {_remaining}\n"
                             f"➕ Panel: /nord এ গিয়ে stock refill করুন।"
                         )
@@ -187,7 +196,7 @@ INJECT_BLOCK = r'''
                 try: _wconn.close()
                 except: pass
             return
-    # === END NORD_AUTO_DELIVER_V3 ===
+    # === END NORD_AUTO_DELIVER_V4 ===
 
 '''
 
