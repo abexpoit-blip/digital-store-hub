@@ -216,9 +216,19 @@ def ensure_tables():
         CREATE INDEX IF NOT EXISTS idx_nord_deliv_stock
             ON nord_deliveries(stock_id);
     """)
+    # Add email column (V3) — safe if already present
+    try:
+        conn.execute("ALTER TABLE nord_stock ADD COLUMN email TEXT")
+    except sqlite3.OperationalError:
+        pass  # column already exists
+    # Unique on non-null email (prevents duplicate same-email account)
+    conn.execute(
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_nord_stock_email "
+        "ON nord_stock(email) WHERE email IS NOT NULL"
+    )
     conn.commit()
     conn.close()
-    print("[db] nord_stock + nord_deliveries tables ready")
+    print("[db] nord_stock (+email) + nord_deliveries tables ready")
 
 
 def patch_store_py():
