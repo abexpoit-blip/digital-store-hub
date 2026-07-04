@@ -93,11 +93,26 @@ router.post('/add', (req, res) => {
   const stmt = db.prepare(
     'INSERT INTO nord_stock (pkg_id, data, delivered_count, created_at) VALUES (?, ?, 0, ?)'
   );
-  const tx = db.transaction((rows) => { for (const r of rows) stmt.run(pkg_id, r, now); });
+  const tx = db.transaction((rows) => {
+    for (const r of rows) stmt.run(pkg_id, r, now);
+    // Reset low-stock alert flag so next depletion re-triggers warning
+    db.prepare("DELETE FROM config WHERE key = ?").run(`nord_last_alert_${pkg_id}`);
+  });
   tx(lines);
 
   logAudit('admin', 'nord_stock_add', `pkg=${pkg_id} count=${lines.length}`);
   res.redirect('/nord?pkg=' + pkg_id + '&msg=' + encodeURIComponent(`✅ ${lines.length} account যোগ হয়েছে (${fmtPkg(pkg_id)})`));
+});
+
+// Update low-stock warning threshold
+router.post('/threshold', (req, res) => {
+  const n = parseInt(req.body.threshold, 10);
+  if (!Number.isFinite(n) || n < 0 || n > 999) {
+    return res.redirect('/nord?msg=' + encodeURIComponent('❌ Threshold 0-999 হতে হবে'));
+  }
+  db.prepare("INSERT OR REPLACE INTO config (key, value) VALUES ('nord_warn_threshold', ?)").run(String(n));
+  logAudit('admin', 'nord_threshold_set', `value=${n}`);
+  res.redirect('/nord?msg=' + encodeURIComponent(`✅ Warning threshold: ${n} slots`));
 });
 
 // Delete a stock row (only if not yet delivered; else force via confirm)
