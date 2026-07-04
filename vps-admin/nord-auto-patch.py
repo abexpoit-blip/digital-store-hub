@@ -18,11 +18,13 @@ from datetime import datetime
 
 STORE_PY = "/root/store.py"
 STORE_DB = "/root/store.db"
-MARKER = "# === NORD_AUTO_DELIVER_V3 ==="
+MARKER = "# === NORD_AUTO_DELIVER_V4 ==="
 OLD_MARKERS = [
     ("# === NORD_AUTO_DELIVER_V1 ===", "# === END NORD_AUTO_DELIVER_V1 ==="),
     ("# === NORD_AUTO_DELIVER_V2 ===", "# === END NORD_AUTO_DELIVER_V2 ==="),
+    ("# === NORD_AUTO_DELIVER_V3 ===", "# === END NORD_AUTO_DELIVER_V3 ==="),
 ]
+MAX_PER_ACCOUNT = 2  # 1 account -> max 2 users
 
 INJECT_BLOCK = r'''
     # === NORD_AUTO_DELIVER_V3 ===
