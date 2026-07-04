@@ -64,7 +64,7 @@ router.get('/', (req, res) => {
   let items = [];
   if (activePkg) {
     items = db.prepare(
-      `SELECT s.id, s.pkg_id, s.data, s.delivered_count, s.created_at,
+      `SELECT s.id, s.pkg_id, s.data, s.email, s.delivered_count, s.created_at,
               (SELECT COUNT(*) FROM nord_deliveries d WHERE d.stock_id = s.id) AS delivered_users
          FROM nord_stock s
         WHERE s.pkg_id = ?
