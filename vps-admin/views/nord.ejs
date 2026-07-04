@@ -1,0 +1,86 @@
+<%- include('partials/header', { title: 'Nord Auto', msg, currentPath }) %>
+
+<h1 class="text-2xl font-bold mb-1">🛡 NordVPN — Auto Delivery</h1>
+<p class="text-sm text-slate-400 mb-4">
+  একটি account সর্বোচ্চ <span class="text-cyan-400 font-semibold"><%= MAX_USES %> জনকে</span> deliver হবে।
+  একই user একই account দুইবার পাবে না। Total: <b><%= totalAccounts %></b> accounts, delivered <b><%= totalDelivered %></b> বার।
+</p>
+
+<!-- Package summary tabs -->
+<div class="flex flex-wrap gap-2 mb-4">
+  <% if (!packages.length) { %>
+    <div class="text-rose-400 text-sm">⚠️ Nord VPN এর কোনো package config নেই। বট এ <code>/setvpnprice nord &lt;pkg&gt; &lt;price&gt;</code> দিয়ে price add করুন।</div>
+  <% } %>
+  <% summary.forEach(function(p){ %>
+    <a href="/nord?pkg=<%= p.pkg_id %>"
+       class="px-3 py-2 rounded-lg border text-sm <%= activePkg === p.pkg_id ? 'bg-cyan-900/40 border-cyan-600 text-cyan-200' : 'border-slate-700 bg-slate-900 text-slate-300 hover:border-slate-500' %>">
+      <div class="font-semibold"><%= p.pkg_label %> · <%= p.price %>৳</div>
+      <div class="text-xs opacity-80">
+        Active: <%= p.active %>/<%= p.total %> · Slots left: <span class="text-emerald-400"><%= p.slotsLeft %></span>
+      </div>
+    </a>
+  <% }) %>
+</div>
+
+<% if (activePkg) { %>
+<!-- Add form -->
+<div class="bg-slate-900 border border-slate-800 rounded-xl p-4 mb-6">
+  <div class="text-sm font-semibold mb-2">➕ Add accounts for <span class="text-cyan-400"><%= activePkg %></span></div>
+  <form method="post" action="/nord/add" class="space-y-2">
+    <input type="hidden" name="pkg_id" value="<%= activePkg %>"/>
+    <textarea name="accounts" rows="6" required
+      placeholder="প্রতি লাইনে একটি account&#10;email:pass&#10;email2:pass2"
+      class="w-full bg-slate-950 border border-slate-700 rounded p-3 font-mono text-xs"></textarea>
+    <div class="flex items-center justify-between">
+      <div class="text-xs text-slate-500">প্রতি account সর্বোচ্চ <%= MAX_USES %> জনকে auto-deliver হবে।</div>
+      <button class="bg-cyan-600 hover:bg-cyan-500 px-4 py-2 rounded text-sm font-medium">Add</button>
+    </div>
+  </form>
+</div>
+
+<!-- Items table -->
+<div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+  <table class="w-full text-sm">
+    <thead>
+      <tr>
+        <th>ID</th><th>Account Data</th><th>Used</th><th>Status</th><th>Delete</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% if (!items.length) { %>
+        <tr><td colspan="5" class="text-center text-slate-500 py-6">কোনো account নেই।</td></tr>
+      <% } %>
+      <% items.forEach(function(it){
+           const exhausted = it.delivered_count >= MAX_USES; %>
+        <tr class="<%= exhausted ? 'opacity-60' : '' %>">
+          <td class="font-mono text-slate-500">#<%= it.id %></td>
+          <td class="font-mono text-xs break-all max-w-md"><%= it.data %></td>
+          <td>
+            <span class="<%= exhausted ? 'text-rose-400' : 'text-emerald-400' %>">
+              <%= it.delivered_count %>/<%= MAX_USES %>
+            </span>
+          </td>
+          <td>
+            <% if (exhausted) { %>
+              <span class="text-xs px-2 py-1 rounded bg-rose-900/40 text-rose-300">Exhausted</span>
+            <% } else { %>
+              <span class="text-xs px-2 py-1 rounded bg-emerald-900/40 text-emerald-300">
+                <%= MAX_USES - it.delivered_count %> slot বাকি
+              </span>
+            <% } %>
+          </td>
+          <td>
+            <form method="post" action="/nord/delete/<%= it.id %>"
+                  onsubmit="return confirm('Delete this account?<%= it.delivered_count > 0 ? " এটি " + it.delivered_count + " জনকে দেওয়া হয়েছে।" : "" %>')">
+              <% if (it.delivered_count > 0) { %><input type="hidden" name="force" value="1"/><% } %>
+              <button class="text-rose-400 hover:text-rose-300 text-xs">✕ Delete</button>
+            </form>
+          </td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</div>
+<% } %>
+
+<%- include('partials/footer') %>
