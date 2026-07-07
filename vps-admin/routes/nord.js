@@ -77,12 +77,25 @@ router.get('/', (req, res) => {
   const totalDelivered = db.prepare('SELECT COUNT(*) c FROM nord_deliveries').get().c;
   const thrRow = db.prepare("SELECT value FROM config WHERE key='nord_warn_threshold'").get();
   const threshold = thrRow ? parseInt(thrRow.value, 10) : 3;
+  const svcRow = db.prepare("SELECT value FROM config WHERE key='nord_service_enabled'").get();
+  const svcVal = svcRow ? String(svcRow.value).toLowerCase() : 'on';
+  const serviceOn = !['0','off','false','no','closed','disabled'].includes(svcVal);
 
   res.render('nord', {
     packages, summary, activePkg, items,
-    totalAccounts, totalDelivered, MAX_USES, threshold,
+    totalAccounts, totalDelivered, MAX_USES, threshold, serviceOn,
     msg: req.query.msg || null
   });
+});
+
+// Toggle Nord service ON/OFF (bot will show "unavailable" when OFF)
+router.post('/toggle', (req, res) => {
+  const next = req.body.state === 'off' ? 'off' : 'on';
+  db.prepare("INSERT OR REPLACE INTO config (key, value) VALUES ('nord_service_enabled', ?)").run(next);
+  logAudit('admin', 'nord_service_toggle', next);
+  res.redirect('/nord?msg=' + encodeURIComponent(next === 'on'
+    ? '✅ NordVPN সার্ভিস চালু হলো'
+    : '⛔ NordVPN সার্ভিস বন্ধ করা হলো — user রা "unavailable" message পাবে'));
 });
 
 // Parse pasted blocks into {email, password} records.
