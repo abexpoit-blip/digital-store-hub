@@ -266,7 +266,7 @@ def patch_store_py():
     src = open(STORE_PY, "r", encoding="utf-8").read()
 
     if MARKER in src:
-        print("[patch] V3 already applied, skipping.")
+        print("[patch] V5 already applied, skipping.")
         return
 
     # Upgrade path: strip any older version blocks, then inject V3
