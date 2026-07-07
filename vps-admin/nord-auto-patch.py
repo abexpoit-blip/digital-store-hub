@@ -212,7 +212,7 @@ INJECT_BLOCK = r'''
                 try: _wconn.close()
                 except: pass
             return
-    # === END NORD_AUTO_DELIVER_V4 ===
+    # === END NORD_AUTO_DELIVER_V5 ===
 
 '''
 
