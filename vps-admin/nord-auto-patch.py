@@ -323,7 +323,7 @@ def patch_store_py():
     print(f"[backup] {bak}")
 
     open(STORE_PY, "w", encoding="utf-8").write(new_src)
-    print("[patch] injected NORD_AUTO_DELIVER_V1 into process_vpn_buy()")
+    print("[patch] injected NORD_AUTO_DELIVER_V5 into process_vpn_buy()")
 
 
 def main():
