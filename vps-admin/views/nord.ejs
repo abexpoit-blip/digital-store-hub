@@ -1,6 +1,19 @@
 <%- include('partials/header', { title: 'Nord Auto', msg, currentPath }) %>
 
-<h1 class="text-2xl font-bold mb-1">🛡 NordVPN — Auto Delivery</h1>
+<div class="flex flex-wrap items-center justify-between gap-3 mb-3">
+  <h1 class="text-2xl font-bold">🛡 NordVPN — Auto Delivery</h1>
+  <form method="post" action="/nord/toggle" class="flex items-center gap-2 bg-slate-900 border border-slate-800 rounded-lg px-3 py-2">
+    <span class="text-xs text-slate-400">Service:</span>
+    <span class="px-2 py-1 rounded text-xs font-semibold <%= serviceOn ? 'bg-emerald-700/40 text-emerald-300' : 'bg-rose-700/40 text-rose-300' %>">
+      <%= serviceOn ? 'ON — auto delivery চালু' : 'OFF — bot এ unavailable দেখাবে' %>
+    </span>
+    <input type="hidden" name="state" value="<%= serviceOn ? 'off' : 'on' %>"/>
+    <button class="text-xs px-3 py-1 rounded <%= serviceOn ? 'bg-rose-600 hover:bg-rose-500' : 'bg-emerald-600 hover:bg-emerald-500' %> text-white"
+            onclick="return confirm('<%= serviceOn ? "NordVPN সার্ভিস বন্ধ করবেন? User রা \"unavailable\" message পাবে।" : "NordVPN সার্ভিস চালু করবেন?" %>')">
+      <%= serviceOn ? '⛔ Turn OFF' : '✅ Turn ON' %>
+    </button>
+  </form>
+</div>
 <p class="text-sm text-slate-400 mb-4">
   একটি account সর্বোচ্চ <span class="text-cyan-400 font-semibold"><%= MAX_USES %> জনকে</span> deliver হবে।
   একই user একই account দুইবার পাবে না। Total: <b><%= totalAccounts %></b> accounts, delivered <b><%= totalDelivered %></b> বার।
