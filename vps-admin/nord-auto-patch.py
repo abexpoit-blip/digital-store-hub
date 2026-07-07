@@ -18,20 +18,36 @@ from datetime import datetime
 
 STORE_PY = "/root/store.py"
 STORE_DB = "/root/store.db"
-MARKER = "# === NORD_AUTO_DELIVER_V4 ==="
+MARKER = "# === NORD_AUTO_DELIVER_V5 ==="
 OLD_MARKERS = [
     ("# === NORD_AUTO_DELIVER_V1 ===", "# === END NORD_AUTO_DELIVER_V1 ==="),
     ("# === NORD_AUTO_DELIVER_V2 ===", "# === END NORD_AUTO_DELIVER_V2 ==="),
     ("# === NORD_AUTO_DELIVER_V3 ===", "# === END NORD_AUTO_DELIVER_V3 ==="),
+    ("# === NORD_AUTO_DELIVER_V4 ===", "# === END NORD_AUTO_DELIVER_V4 ==="),
 ]
 MAX_PER_ACCOUNT = 2  # 1 account -> max 2 users
 
 INJECT_BLOCK = r'''
-    # === NORD_AUTO_DELIVER_V4 ===
+    # === NORD_AUTO_DELIVER_V5 ===
     # NordVPN auto-delivery: 1 account -> max 2 users, no repeat per user.
-    # V4: max=2, official NordVPN shield icon, dynamic package icon.
+    # V5: adds admin-controlled ON/OFF switch (config key: nord_service_enabled).
     import json as _json
     if vpn_id == 'nord':
+        # --- Service ON/OFF gate (admin-toggled from /nord panel) ---
+        try:
+            _svc_row = conn.execute(
+                "SELECT value FROM config WHERE key='nord_service_enabled'"
+            ).fetchone()
+        except Exception:
+            _svc_row = None
+        _svc_val = (str(_svc_row[0]).strip().lower() if _svc_row else 'on')
+        if _svc_val in ('0', 'off', 'false', 'no', 'closed', 'disabled'):
+            conn.close()
+            return await c.message.answer(
+                "🛡️ NordVPN সার্ভিস এই মুহূর্তে সাময়িকভাবে বন্ধ আছে।\n"
+                "⏳ শীঘ্রই আবার চালু হবে — একটু অপেক্ষা করুন।\n"
+                "💙 ধন্যবাদ আপনার ধৈর্যের জন্য!"
+            )
         try:
             _nord_row = conn.execute(
                 """SELECT id, data FROM nord_stock
