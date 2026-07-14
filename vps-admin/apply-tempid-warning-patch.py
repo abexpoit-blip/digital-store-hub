@@ -31,7 +31,7 @@ MARKER = "# [TEMPID_WARN_PATCH]"
 # The delivery line pattern (line ~991)
 # _lbl = {...}.get(cat, cat.upper()); await m.answer(f"🆔 **আপনার {_lbl} প্রোডাক্ট:**")
 DELIVERY_RE = re.compile(
-    r'^(?P<indent>\s*)(_lbl\s*=\s*\{[^}]*"tempid"[^}]*\}\.get\(cat[^)]*\)\s*;\s*await\s+m\.answer\(f"🆔[^"]*"\))\s*$',
+    r'^(?P<indent>[ \t]*)(_lbl\s*=\s*\{[^}]*"tempid"[^}]*\}[^;\n]*;\s*await\s+m\.answer\(f"🆔[^"\n]*"\))[ \t]*$',
     re.MULTILINE
 )
 
