@@ -2,6 +2,20 @@ const express = require('express');
 const { db, logAudit } = require('../db');
 const router = express.Router();
 
+const BOT_TOKEN = process.env.BOT_TOKEN || '';
+
+// Fire-and-forget Telegram notify (never throws)
+async function notifyUser(userId, text) {
+  if (!BOT_TOKEN || !userId) return;
+  try {
+    await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: userId, text, parse_mode: 'Markdown' }),
+    });
+  } catch (e) { console.error('[replace] notify failed:', e.message); }
+}
+
 router.get('/', (req, res) => {
   const status = req.query.status || 'pending';
   const q = (req.query.q || '').trim();
@@ -20,6 +34,7 @@ router.get('/', (req, res) => {
   const counts = {
     pending: db.prepare("SELECT COUNT(*) AS c FROM replace_requests WHERE status='pending'").get().c,
     collected: db.prepare("SELECT COUNT(*) AS c FROM replace_requests WHERE status='collected'").get().c,
+    rejected: db.prepare("SELECT COUNT(*) AS c FROM replace_requests WHERE status='rejected'").get().c,
   };
   res.render('replace', { rows, status, counts, q, msg: req.query.msg || null });
 });
@@ -30,6 +45,30 @@ router.post('/:id/collect', (req, res) => {
     .run(Date.now(), id);
   logAudit('admin', 'replace_collected', `id=${id}`);
   res.redirect('/replace?msg=' + encodeURIComponent('✅ Marked collected'));
+});
+
+// NEW: Reject — mark rejected + auto-notify user
+router.post('/:id/reject', async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  const row = db.prepare('SELECT * FROM replace_requests WHERE id = ?').get(id);
+  if (!row) return res.redirect('/replace?msg=' + encodeURIComponent('❌ Not found'));
+
+  db.prepare("UPDATE replace_requests SET status='rejected', collected_at=? WHERE id=?")
+    .run(Date.now(), id);
+  logAudit('admin', 'replace_rejected', `id=${id} user=${row.user_id}`);
+
+  const msg =
+    `❌ *Replace Request Rejected*\n\n` +
+    `Category: \`${row.category || '-'}\`\n` +
+    `Request ID: #${row.id}\n\n` +
+    `⚠️ *Temp ID rules:*\n` +
+    `• Replace time: 2 ঘণ্টা\n` +
+    `• Verify হয়ে গেলে replace হবে না\n` +
+    `• শুধু login issue হলে replace সম্ভব\n\n` +
+    `আপনার request rules এর বাইরে ছিল তাই reject করা হয়েছে।`;
+  notifyUser(row.user_id, msg);
+
+  res.redirect('/replace?msg=' + encodeURIComponent('🚫 Rejected & user notified'));
 });
 
 router.post('/:id/delete', (req, res) => {
