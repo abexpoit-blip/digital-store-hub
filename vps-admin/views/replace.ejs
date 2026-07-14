@@ -64,10 +64,14 @@
               <form method="post" action="/replace/<%= r.id %>/collect" class="inline">
                 <button class="bg-emerald-600 hover:bg-emerald-500 px-3 py-1 rounded text-xs">Collect</button>
               </form>
+              <form method="post" action="/replace/<%= r.id %>/reject" class="inline"
+                    onsubmit="return confirm('Reject this request? User কে auto message যাবে।');">
+                <button class="bg-rose-500 hover:bg-rose-400 px-3 py-1 rounded text-xs">🚫 Reject</button>
+              </form>
             <% } %>
             <form method="post" action="/replace/<%= r.id %>/delete" class="inline"
                   onsubmit="return confirm('Permanently delete?');">
-              <button class="bg-rose-600 hover:bg-rose-500 px-3 py-1 rounded text-xs">Delete</button>
+              <button class="bg-rose-700 hover:bg-rose-600 px-3 py-1 rounded text-xs">Delete</button>
             </form>
           </td>
         </tr>
