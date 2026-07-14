@@ -23,6 +23,9 @@
   <a href="/replace?status=collected" class="px-4 py-2 rounded text-sm <%= status==='collected'?'bg-emerald-600 text-white':'bg-slate-800 text-slate-300 hover:bg-slate-700' %>">
     ✅ Collected (<%= counts.collected %>)
   </a>
+  <a href="/replace?status=rejected" class="px-4 py-2 rounded text-sm <%= status==='rejected'?'bg-rose-600 text-white':'bg-slate-800 text-slate-300 hover:bg-slate-700' %>">
+    🚫 Rejected (<%= counts.rejected %>)
+  </a>
 </div>
 
 <form class="mb-4 flex gap-2">
@@ -61,10 +64,14 @@
               <form method="post" action="/replace/<%= r.id %>/collect" class="inline">
                 <button class="bg-emerald-600 hover:bg-emerald-500 px-3 py-1 rounded text-xs">Collect</button>
               </form>
+              <form method="post" action="/replace/<%= r.id %>/reject" class="inline"
+                    onsubmit="return confirm('Reject this request? User কে auto message যাবে।');">
+                <button class="bg-rose-500 hover:bg-rose-400 px-3 py-1 rounded text-xs">🚫 Reject</button>
+              </form>
             <% } %>
             <form method="post" action="/replace/<%= r.id %>/delete" class="inline"
                   onsubmit="return confirm('Permanently delete?');">
-              <button class="bg-rose-600 hover:bg-rose-500 px-3 py-1 rounded text-xs">Delete</button>
+              <button class="bg-rose-700 hover:bg-rose-600 px-3 py-1 rounded text-xs">Delete</button>
             </form>
           </td>
         </tr>
