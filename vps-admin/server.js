@@ -83,12 +83,12 @@ app.use('/polls', requireLogin, require('./routes/polls'));
 app.use('/nord', requireLogin, require('./routes/nord'));
 
 // 404
-app.use((req, res) => res.status(404).render('error', { message: 'Page not found' }));
+app.use((req, res) => res.status(404).render('error', { message: 'Page not found', currentPath: req.originalUrl || '' }));
 
 // Error handler
 app.use((err, req, res, next) => {
   console.error('[error]', req.method, req.originalUrl, err && err.stack ? err.stack : err);
-  res.status(500).render('error', { message: err.message || 'Server error' });
+  res.status(500).render('error', { message: err.message || 'Server error', currentPath: req.originalUrl || '' });
 });
 
 const PORT = parseInt(process.env.PORT || '3000', 10);
