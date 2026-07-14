@@ -23,6 +23,9 @@
   <a href="/replace?status=collected" class="px-4 py-2 rounded text-sm <%= status==='collected'?'bg-emerald-600 text-white':'bg-slate-800 text-slate-300 hover:bg-slate-700' %>">
     ✅ Collected (<%= counts.collected %>)
   </a>
+  <a href="/replace?status=rejected" class="px-4 py-2 rounded text-sm <%= status==='rejected'?'bg-rose-600 text-white':'bg-slate-800 text-slate-300 hover:bg-slate-700' %>">
+    🚫 Rejected (<%= counts.rejected %>)
+  </a>
 </div>
 
 <form class="mb-4 flex gap-2">
