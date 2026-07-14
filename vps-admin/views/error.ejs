@@ -1,4 +1,4 @@
-<%- include('partials/header', { title: 'Error', msg: null, currentPath }) %>
+<%- include('partials/header', { title: 'Error', msg: null, currentPath: (typeof currentPath !== 'undefined' ? currentPath : (typeof req !== 'undefined' && req ? req.originalUrl : '')) }) %>
 <div class="text-center py-20">
   <div class="text-6xl mb-4">⚠</div>
   <h1 class="text-2xl font-bold mb-2">Oops!</h1>
