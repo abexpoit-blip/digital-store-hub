@@ -81,7 +81,8 @@ def main():
     if not pat.search(src):
         die("dep_start block পাওয়া যায়নি — store.py structure ভিন্ন। manual check দরকার।")
 
-    src = pat.sub(NEW_DEP_START + "\n", src, count=1)
+    # Use lambda to avoid re.sub interpreting backslash escapes (\n, \1, etc.) in replacement
+    src = pat.sub(lambda _m: NEW_DEP_START + "\n", src, count=1)
     print("✅ dep_start replaced — Manual (Screenshot) option বাদ দেওয়া হয়েছে")
 
     with open(STORE_PY, "w", encoding="utf-8") as f:
