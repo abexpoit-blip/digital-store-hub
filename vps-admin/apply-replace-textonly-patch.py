@@ -66,15 +66,18 @@ else:
     print("⚠️  Prompt line not found — skipping")
 
 # --- 3) Replace the process_replace_request handler ---
-OLD_HANDLER_HEAD = '''@dp.message(ShopStates.waiting_for_replace_data)
-async def process_replace_request(m: types.Message, state: FSMContext):
-    if m.text and m.text.startswith("/"): return
-
-    ticket_id = str(uuid.uuid4())[:8]
-    user_data_text = m.text
-
-    lines = [line for line in user_data_text.split('\\n') if line.strip()]
-    acc_count_warning = f"⚠️ __ইউজার {len(lines)} টি একাউন্ট দিয়েছে!__" if len(lines) > 1 else ""'''
+import re as _re_h
+OLD_HANDLER_RE = _re_h.compile(
+    r'@dp\.message\(ShopStates\.waiting_for_replace_data\)\n'
+    r'async def process_replace_request\(m: types\.Message, state: FSMContext\):\n'
+    r'[ \t]*if m\.text and m\.text\.startswith\("/"\): return\n'
+    r'[ \t]*\n'
+    r'[ \t]*ticket_id = str\(uuid\.uuid4\(\)\)\[:8\]\n'
+    r'[ \t]*user_data_text = m\.text\n'
+    r'[ \t]*\n'
+    r"[ \t]*lines = \[line for line in user_data_text\.split\('\\n'\) if line\.strip\(\)\]\n"
+    r'[ \t]*acc_count_warning = f"[^\n]*" if len\(lines\) > 1 else ""'
+)
 
 NEW_HANDLER_HEAD = '''@dp.message(ShopStates.waiting_for_replace_data)
 async def process_replace_request(m: types.Message, state: FSMContext):
@@ -127,8 +130,9 @@ async def process_replace_request(m: types.Message, state: FSMContext):
     lines = raw_lines
     acc_count_warning = f"⚠️ __ইউজার {len(lines)} টি একাউন্ট দিয়েছে!__" if len(lines) > 1 else ""'''
 
-if OLD_HANDLER_HEAD in src:
-    src = src.replace(OLD_HANDLER_HEAD, NEW_HANDLER_HEAD, 1)
+_m = OLD_HANDLER_RE.search(src)
+if _m:
+    src = src[:_m.start()] + NEW_HANDLER_HEAD + src[_m.end():]
     print("✅ Handler patched (text-only + format validation)")
 else:
     print("❌ Handler block not found. Manual review needed.")
