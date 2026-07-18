@@ -130,8 +130,9 @@ async def process_replace_request(m: types.Message, state: FSMContext):
     lines = raw_lines
     acc_count_warning = f"⚠️ __ইউজার {len(lines)} টি একাউন্ট দিয়েছে!__" if len(lines) > 1 else ""'''
 
-if OLD_HANDLER_HEAD in src:
-    src = src.replace(OLD_HANDLER_HEAD, NEW_HANDLER_HEAD, 1)
+_m = OLD_HANDLER_RE.search(src)
+if _m:
+    src = src[:_m.start()] + NEW_HANDLER_HEAD + src[_m.end():]
     print("✅ Handler patched (text-only + format validation)")
 else:
     print("❌ Handler block not found. Manual review needed.")
